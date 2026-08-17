@@ -219,12 +219,20 @@ export function rootStyle(v: typeof values = values): string {
    The thread is keyed to the post's English path (data-mapping:
    specific in BlogPostPage.astro), so the two language versions of a
    post share one comment thread rather than splitting the
-   discussion. */
+   discussion.
+
+   Each value falls back to an environment variable so the Pages demo
+   can have working comments while the four below stay blank here.
+   That is not a convenience: this repository is a template, and IDs
+   committed to this file would be inherited by every fork — someone
+   else's readers would post into the demo's Discussions, and they
+   would find out from a stranger's comment rather than from a build
+   error. Edit the strings; leave the fallbacks alone. */
 export const comments = {
-  repo: "",
-  repoId: "",
-  category: "",
-  categoryId: "",
+  repo: import.meta.env?.GISCUS_REPO || "",
+  repoId: import.meta.env?.GISCUS_REPO_ID || "",
+  category: import.meta.env?.GISCUS_CATEGORY || "",
+  categoryId: import.meta.env?.GISCUS_CATEGORY_ID || "",
 } as const;
 
 export const commentsEnabled: boolean = Boolean(

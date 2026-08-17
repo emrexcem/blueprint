@@ -58,6 +58,25 @@ jobs:
             exit 1
           fi
 
+      # This repository is a template, so comments must be off in a build
+      # that sets no giscus environment — an ID committed to src/config.ts
+      # is an ID every fork inherits, and the symptom is a stranger's
+      # readers posting into this repository's Discussions, which nothing
+      # else here would catch. The demo's IDs live in pages.yml; if they
+      # ever migrate into the config file, this step is what says so.
+      #
+      # The slot element is the thing asserted rather than the string
+      # "giscus": BlogPostPage's bundled script always ships (it also
+      # drives the contents rail) and looks for [data-giscus] before
+      # bailing, so the word is present in a correct build.
+      - name: Assert comments are off without giscus configuration
+        run: |
+          if grep -rq 'id="giscus-slot"' dist; then
+            echo "no giscus environment was set, but the comments section was rendered:"
+            grep -rl 'id="giscus-slot"' dist | head
+            exit 1
+          fi
+
       # src/config.ts holds site identity, projects and experience in
       # both languages in one module now, so correctness of the
       # untranslated-copy split depends on Rollup shaking the German half

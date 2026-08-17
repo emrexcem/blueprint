@@ -52,9 +52,23 @@ jobs:
       # SHOWCASE turns on the variation control strip, which is demo
       # furniture: it is here so a visitor can try the palettes and presets
       # without cloning anything, and it ships in no other build.
+      #
+      # The giscus IDs are demo furniture for the same reason, and are set
+      # here rather than in src/config.ts because this repository is a
+      # template: an ID committed to that file is an ID every fork
+      # inherits, and a fork's readers would post into this repository's
+      # Discussions. They are not secrets — giscus IDs are public by
+      # design and appear in the rendered markup — so they are written
+      # here plainly rather than kept as repository secrets, where they
+      # would be invisible to anyone reading the workflow and would break
+      # a fork's Pages build with no clue why.
       - name: Build the demo
         env:
           SHOWCASE: 1
+          GISCUS_REPO: emrexcem/blueprint
+          GISCUS_REPO_ID: R_kgDOT7Ci4w
+          GISCUS_CATEGORY: Announcements
+          GISCUS_CATEGORY_ID: DIC_kwDOT7Ci484DDkaG
         run: npm run build
 
       - uses: actions/upload-pages-artifact@v3

@@ -78,8 +78,24 @@ export default defineConfig({
     // ors this with import.meta.env.DEV, so `npm run dev` shows the
     // strip without an env var — no cross-platform inline assignment
     // in package.json.
+    // giscus, same reasoning one step further: the demo has comments and
+    // the committed config.ts does not, because this repository is a
+    // template and an ID committed there is an ID every fork inherits.
+    // The Pages workflow sets these four; nothing else does, so a fork
+    // builds with them empty and `commentsEnabled` stays false until the
+    // fork's own author fills the strings in.
+    //
+    // `?? ""` rather than a bare read: an unset variable would make
+    // JSON.stringify return undefined, and define would then substitute
+    // the *identifier* `undefined` into the module.
     define: {
       "import.meta.env.SHOWCASE": JSON.stringify(process.env.SHOWCASE === "1"),
+      "import.meta.env.GISCUS_REPO": JSON.stringify(process.env.GISCUS_REPO ?? ""),
+      "import.meta.env.GISCUS_REPO_ID": JSON.stringify(process.env.GISCUS_REPO_ID ?? ""),
+      "import.meta.env.GISCUS_CATEGORY": JSON.stringify(process.env.GISCUS_CATEGORY ?? ""),
+      "import.meta.env.GISCUS_CATEGORY_ID": JSON.stringify(
+        process.env.GISCUS_CATEGORY_ID ?? "",
+      ),
     },
   },
 });
