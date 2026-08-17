@@ -33,7 +33,7 @@
     "fontverter": "^2.0.0",
     "harfbuzzjs": "^0.10.3",
     "tailwindcss": "^4.x",
-    "tsx": "^4.21.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.9.3"
   },
   "engines": {
