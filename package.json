@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "layout": "tsx src/scripts/layout-engine.ts",
+    "preset": "node scripts/set-preset.mjs",
     "dev": "astro dev",
     "check": "astro check",
     "prebuild": "tsx src/scripts/layout-engine.ts",

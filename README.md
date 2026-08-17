@@ -156,6 +156,11 @@ npm run dev
 
 The dev server is at `localhost:4321`, with the variation rail on.
 
+If you already know which palette you want, the
+[latest release](https://github.com/emrexcem/blueprint/releases/latest) carries
+each of the four as its own download — a source starter with the palette already
+set, and a built static site for hosts where you would rather not run a build.
+
 [`src/config.ts`](src/config.ts) is the whole site, in order down the file:
 
 | Export | What it is |
@@ -205,6 +210,15 @@ in `global.css`, and the demo's rail switches between exactly these:
 | `grid` | `ruled` · `coarse` · `plain` |
 | `rule` | `hairline` · `bold` |
 | `motion` | `system` · `full` · `reduced` |
+
+Edit them in the file, or set them from the command line — handy in a script,
+and it validates the value against the union rather than letting a typo reach a
+build:
+
+```bash
+npm run preset -- palette=redline
+npm run preset -- palette=graphite corner=square grid=plain
+```
 
 Values, the `values` export, are continuous: `noiseOpacity`, `parallaxDepth`,
 `tiltMaxDeg`. Hand-edit these; nothing switches them at runtime, and the demo's

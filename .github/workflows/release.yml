@@ -1,0 +1,179 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  # A dry run: builds and packs all four palettes and leaves them as
+  # workflow artifacts, but publishes nothing. Run this before tagging —
+  # a release is the one thing here that cannot be quietly redone.
+  workflow_dispatch:
+
+# Two releases racing would interleave their uploads onto whichever tag
+# finished last. Queue rather than cancel: a half-uploaded release is worse
+# than a slow one.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      # A release ships the palettes as a set. If one of them cannot be
+      # built the set is incomplete, and publishing three of four silently
+      # is the wrong outcome — stop the whole run instead.
+      fail-fast: true
+      matrix:
+        palette: [blueprint, redline, verdigris, graphite]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Name this build
+        run: |
+          if [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="$GITHUB_REF_NAME"
+          else
+            version="dev-${GITHUB_SHA::7}"
+          fi
+          echo "NAME=blueprint-$version-${{ matrix.palette }}" >> "$GITHUB_ENV"
+
+      # The palette is written into src/config.ts rather than passed as an
+      # environment variable, because the source starter has to carry it:
+      # someone who unzips one and runs `npm run dev` has no environment
+      # set. The script edits the `theme` block only and validates the
+      # value against the union type in the same file.
+      - name: Apply the palette
+        run: node scripts/set-preset.mjs palette=${{ matrix.palette }}
+
+      # Packed before the build so the starter carries no dist/ or .astro/,
+      # and nested in a directory so unzipping does not strew a repo across
+      # the user's current folder.
+      - name: Pack the source starter
+        run: |
+          mkdir -p out "stage/$NAME"
+          rsync -a \
+            --exclude .git \
+            --exclude node_modules \
+            --exclude dist \
+            --exclude .astro \
+            --exclude stage \
+            --exclude out \
+            ./ "stage/$NAME/"
+          (cd stage && zip -qr "../out/$NAME-src.zip" "$NAME")
+
+      # No SHOWCASE: the variation strip is demo furniture and a released
+      # build is not the demo. No SITE_URL or BASE_PATH either, so the
+      # output is root-relative and portable to any host — the release
+      # notes say to rebuild with your own SITE_URL for correct canonical
+      # and OG URLs, which is the one thing a prebuilt site cannot know.
+      #
+      # This is also the test: prebuild asserts skill-tree clearance and
+      # postbuild asserts the mono's advance ratio, both non-zero on
+      # failure. Four palettes therefore means the theme is proven to build
+      # four ways before anything is published.
+      - name: Build
+        run: npm run build
+
+      # Contents at the zip root, so unzipping onto a static host serves
+      # index.html without a directory in the way.
+      - name: Pack the built site
+        run: (cd dist && zip -qr "../out/$NAME-site.zip" .)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.palette }}
+          path: out/*.zip
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    # Nothing is published by the dry run.
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          pattern: release-*
+          merge-multiple: true
+
+      # Four palettes, two zips each. Anything else means a matrix leg
+      # uploaded nothing or the naming drifted, and it is worth catching
+      # here rather than in a release someone has already downloaded.
+      - name: Assert the set is complete
+        run: |
+          count=$(find assets -name '*.zip' | wc -l)
+          if [ "$count" -ne 8 ]; then
+            echo "expected 8 assets (4 palettes x src+site), found $count:"
+            find assets -name '*.zip' | sort
+            exit 1
+          fi
+          find assets -name '*.zip' | sort
+
+      - name: Write the release notes
+        run: |
+          cat > notes.md <<'EOF'
+          Live demo: https://emrexcem.github.io/blueprint/
+
+          ## Downloads
+
+          The theme ships four accent palettes. Each is released twice — once
+          as a source starter and once as a built site — so you can pick a
+          look without editing anything.
+
+          | Palette | Source starter | Built site |
+          |---|---|---|
+          | Blueprint — cyan, the default | `…-blueprint-src.zip` | `…-blueprint-site.zip` |
+          | Redline — vermilion | `…-redline-src.zip` | `…-redline-site.zip` |
+          | Verdigris — patinated green | `…-verdigris-src.zip` | `…-verdigris-site.zip` |
+          | Graphite — steel grey | `…-graphite-src.zip` | `…-graphite-site.zip` |
+
+          **Source starters** are the full theme with that palette already set
+          in `src/config.ts`. Unzip, then:
+
+          ```sh
+          npm install
+          npm run dev
+          ```
+
+          **Built sites** are static output — HTML, CSS, JS and subset fonts,
+          no Node needed. Drop one on any static host. They are built
+          root-relative with the placeholder origin, so if you care about
+          canonical links, the sitemap, the RSS feed or social card URLs,
+          build from source with your own `SITE_URL` instead:
+
+          ```sh
+          SITE_URL=https://your-domain.example npm run build
+          ```
+
+          Prefer to start from the repository? Use this template, or
+          `npx degit emrexcem/blueprint`. Palettes are also switchable after
+          the fact — `theme.palette` in `src/config.ts`, or one line in
+          `src/styles/global.css` for a palette of your own.
+
+          Every palette in this release was built and passed the skill-tree
+          clearance and font-metric assertions.
+          EOF
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file notes.md \
+            assets/*.zip
