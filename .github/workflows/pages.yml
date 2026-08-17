@@ -71,7 +71,7 @@ jobs:
           GISCUS_CATEGORY_ID: DIC_kwDOT7Ci484DDkaG
         run: npm run build
 
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
 
