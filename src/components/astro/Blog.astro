@@ -1,0 +1,95 @@
+---
+/*  Blog.astro
+    Homepage writing section — shows the latest published blog posts
+    from the content collection. Falls back to a "coming soon" state
+    if no posts are published yet.
+
+    Post titles and descriptions stay in the language they were
+    written in; only the section's own furniture translates.     */
+
+import Sheet from "./Sheet.astro";
+import { getPublishedPosts } from "../../lib/posts";
+import { getLang, localizePath, useTranslations } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const all = await getPublishedPosts();
+const posts = all.slice(0, 3);
+---
+
+{/* Not `boxed`: the post cards are plates already. */}
+<Sheet
+  id="blog"
+  index={5}
+  label={t.writing.label}
+  title={t.writing.title}
+  description={t.writing.description}
+>
+    {posts.length === 0 ? (
+      <div class="reveal plate p-12 text-center">
+        <p class="font-mono text-text-muted">{t.writing.empty}</p>
+      </div>
+    ) : (
+      /* The track count follows the post count, so two posts fill the
+         row instead of sitting beside an empty third column. */
+      <div class="post-grid grid gap-6" style={`--post-cols:${Math.min(posts.length, 3)}`}>
+        {posts.map((post) => (
+          <article class="reveal plate accent-edge group relative flex flex-col pl-6 pr-5 py-6 transition-colors hover:bg-[var(--surface-plate-hover)]">
+            {/* Stretched link — covers whole card, no style bleed */}
+            <a
+              href={localizePath(`/blog/${post.slug}`, lang)}
+              class="absolute inset-0 z-10"
+              aria-label={post.data.title}
+            ></a>
+
+            <time class="data-label text-text-muted mb-3" datetime={post.data.date.toISOString()}>
+              {post.data.date.toLocaleDateString(t.dateLocale, {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </time>
+
+            <h3
+              class="type-card mb-3 text-[var(--text-primary)] group-hover:text-accent-primary transition-colors"
+              transition:name={`post-title-${post.slug}`}
+            >
+              {post.data.title}
+            </h3>
+
+            <p class="text-text-muted text-sm leading-relaxed mb-5 flex-1">
+              {post.data.description}
+            </p>
+
+            <div class="flex flex-wrap gap-2">
+              {post.data.tags.slice(0, 3).map((tag: string) => (
+                <span class="eyebrow px-2 py-1 border border-subtle text-text-muted rounded-[var(--radius-chip)]">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </article>
+        ))}
+      </div>
+    )}
+
+    <div class="mt-12 reveal">
+      <a
+        href={localizePath("/blog", lang)}
+        class="group inline-flex items-center gap-3 font-mono text-sm px-5 py-3 plate plate-notch
+               text-text-muted hover:text-accent-primary transition-colors"
+      >
+        {t.writing.readAll}
+        <span aria-hidden="true" class="transition-transform duration-300 group-hover:translate-x-1">→</span>
+      </a>
+    </div>
+</Sheet>
+
+<style>
+  @media (min-width: 768px) {
+    .post-grid {
+      grid-template-columns: repeat(var(--post-cols), minmax(0, 1fr));
+    }
+  }
+</style>

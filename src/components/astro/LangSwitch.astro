@@ -1,0 +1,115 @@
+---
+/*  LangSwitch.astro
+    Two ruled cells, EN and DE, sharing one plate — the same device
+    the footer's title block uses to sit fields side by side. The
+    current language is the accented cell; the other is a plain link
+    to the same page under the other prefix, so the switch works with
+    no JavaScript and search engines can follow it.
+
+    `stretch` makes the plate fill its flex row's height, which is how
+    it lines up with the navbar's theme button without either one
+    hard-coding a pixel height.                                     */
+
+import { DICTS, LOCALES } from "../../i18n/ui";
+import { getLang, switchLangPath } from "../../i18n";
+
+interface Props {
+  /** Fill the parent flex row's height (navbar) rather than hugging
+      the text (mobile menu). */
+  stretch?: boolean;
+  class?: string;
+}
+
+const { stretch = false, class: className = "" } = Astro.props;
+
+const current = getLang(Astro.url);
+const cells = LOCALES.map((lang) => ({
+  lang,
+  code: lang.toUpperCase(),
+  href: switchLangPath(Astro.url.pathname, lang),
+  label: DICTS[lang].nav.switchTo,
+  active: lang === current,
+}));
+---
+
+<div
+  class:list={["lang-switch", stretch && "lang-switch-stretch", className]}
+  role="group"
+  aria-label={DICTS[current].nav.language}
+>
+  {cells.map((cell) => (
+    <a
+      href={cell.href}
+      class:list={["lang-cell", cell.active && "is-active"]}
+      hreflang={cell.lang}
+      lang={cell.lang}
+      aria-label={cell.label}
+      aria-current={cell.active ? "true" : undefined}
+    >
+      {cell.code}
+    </a>
+  ))}
+</div>
+
+<style>
+  .lang-switch {
+    display: inline-flex;
+    align-items: stretch;
+    background: var(--surface-plate);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-plate);
+    /* No `overflow: hidden`. It was here to clip the active cell's tint
+       to the plate's corners, and it also clipped away the focus ring —
+       which left the switch with no focus indicator at all. The end
+       cells carry the corners themselves instead. */
+  }
+
+  .lang-cell {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.625rem;
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    line-height: 1;
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    transition:
+      color 0.25s var(--ease-out-expo),
+      background-color 0.25s var(--ease-out-expo);
+  }
+
+  /* The corners the plate used to clip for them */
+  .lang-cell:first-child {
+    border-start-start-radius: var(--radius-plate);
+    border-end-start-radius: var(--radius-plate);
+  }
+  .lang-cell:last-child {
+    border-start-end-radius: var(--radius-plate);
+    border-end-end-radius: var(--radius-plate);
+  }
+
+  /* The rule between the cells, matching the title block's cell rules */
+  .lang-cell + .lang-cell {
+    border-left: 1px solid var(--border-faint);
+  }
+
+  .lang-cell:hover {
+    color: var(--text-primary);
+  }
+
+  .lang-cell.is-active {
+    color: var(--accent-primary);
+    background: color-mix(in srgb, var(--accent-primary) 10%, transparent);
+  }
+  /* The active cell is the current page; nothing to promise on hover */
+  .lang-cell.is-active:hover {
+    color: var(--accent-primary);
+  }
+</style>
+
+<script>
+  // Anchors the switch to the reader's current section. Hoisted once
+  // per page by Astro even though this component renders twice (the
+  // navbar bar and the mobile bar).
+  import "../../scripts/lang-anchor";
+</script>

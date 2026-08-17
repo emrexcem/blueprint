@@ -1,0 +1,73 @@
+---
+/*  Footer.astro
+    The sheet's title block. On a real drawing this is where the
+    authorship and revision metadata live, so the fields here are the
+    site's actual metadata rather than a decorative flourish.      */
+
+import { getLang, useTranslations } from "../../i18n";
+import { site } from "../../config";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const revision = new Date().toISOString().slice(0, 7).replace("-", ".");
+
+const fields = [
+  { label: t.footer.drawnBy, value: site.author },
+  { label: t.footer.location, value: site.location },
+  { label: t.footer.revision, value: revision },
+  { label: t.footer.sheet, value: t.footer.sheetValue },
+];
+---
+
+<footer class="px-6 pb-10">
+  <div class="max-w-6xl mx-auto">
+    <div class="plate title-block">
+      <dl class="grid grid-cols-2 md:grid-cols-4">
+        {fields.map((field) => (
+          <div class="title-cell px-5 py-4">
+            <dt class="eyebrow text-text-muted mb-1.5">{field.label}</dt>
+            <dd class="font-mono text-sm text-[var(--text-primary)]">{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <div class="flex items-center justify-between gap-4 px-5 py-3 border-t border-faint">
+        <p class="data-label text-text-muted">
+          &copy; {new Date().getFullYear()} {site.author}
+        </p>
+        {/* `#top` rather than `#hero`: the hero only exists on the
+            homepage, so this link was dead on /blog, on every post and
+            on the 404 sheet. HTML defines "top" as the top of the
+            document when nothing carries that id, which no element
+            here does — so it works on all four page types, and it
+            works with JavaScript off. */}
+        <a
+          href="#top"
+          class="data-label text-text-muted hover:text-accent-primary transition-colors"
+        >
+          {t.footer.backToTop}
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<style>
+  /* Ruled cells, like the boxes of a drawing's title block */
+  .title-cell + .title-cell {
+    border-left: 1px solid var(--border-faint);
+  }
+  .title-cell:nth-child(3) {
+    border-top: 1px solid var(--border-faint);
+  }
+  .title-cell:nth-child(4) {
+    border-top: 1px solid var(--border-faint);
+  }
+  @media (min-width: 768px) {
+    .title-cell:nth-child(3),
+    .title-cell:nth-child(4) {
+      border-top: 0;
+    }
+  }
+</style>

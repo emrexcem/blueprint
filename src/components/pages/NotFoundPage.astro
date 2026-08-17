@@ -1,0 +1,72 @@
+---
+/*  NotFoundPage.astro
+    Missing-page sheet. Follows the same opening as every homepage
+    section — sheet index, title, rule, standfirst — so a wrong URL
+    still lands somewhere that reads as part of the set. The index
+    is the status code, which is the one number that actually
+    carries information here.
+
+    Note that the web server serves the English /404.html for any
+    unknown path, German ones included; /de/404 exists so the German
+    sheet is reachable and so the language switch has somewhere to
+    go from here.                                                  */
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Navbar from "../astro/Navbar.astro";
+import Footer from "../astro/Footer.astro";
+import Sheet from "../astro/Sheet.astro";
+import { getLang, localizePath, useTranslations } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const hrefs = ["/", "/blog", "/#contact"];
+const routes = t.notFound.routes.map((route, i) => ({
+  ...route,
+  href: localizePath(hrefs[i], lang),
+}));
+---
+
+<BaseLayout
+  title={t.meta.notFoundTitle}
+  description={t.meta.notFoundDescription}
+>
+  <Navbar />
+
+  {/* The sheet index is the status code — the one number here that
+      carries information. Not `boxed`: the routes are plates already. */}
+  <main class="pt-20">
+    <Sheet
+      index="404"
+      label={t.notFound.label}
+      title={t.notFound.title}
+      heading="h1"
+      description={t.notFound.body}
+      rhythm="page"
+    >
+      {/* plate-notch marks these as interactive without needing a
+          pointer: the accent edge only fills on hover, which never
+          fires on a phone — and this page is mostly a phone page.
+
+          Three across on a wide screen: a column of three stacked in
+          the left third left two thirds of the sheet blank, which on
+          the one page whose job is to offer a way out reads as the
+          set having run out rather than as composure. */}
+      <ul class="grid gap-3 sm:grid-cols-3">
+        {routes.map((route) => (
+          <li>
+            <a
+              href={route.href}
+              class="accent-edge plate plate-notch flex flex-col h-full px-6 py-5"
+            >
+              <span class="type-card text-[var(--text-primary)]">{route.label}</span>
+              <span class="data-label block mt-1 text-text-muted">{route.note}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </Sheet>
+  </main>
+
+  <Footer />
+</BaseLayout>

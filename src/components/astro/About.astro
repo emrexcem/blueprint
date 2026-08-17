@@ -1,0 +1,218 @@
+---
+/* About.astro
+    Bio, then two spec tables: languages and interests.
+    Skills are shown in a separate React component (SkillTree).
+
+    Languages read in their own language by default; hovering a row
+    translates it into the language of the page, which is the point
+    the table makes. On the German page the German row is the one
+    that sits still, and the others resolve into German.        */
+
+import Sheet from "./Sheet.astro";
+import { about } from "../../config";
+import { getLang, pick, useTranslations } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const bio = pick(about.bio, lang);
+const interests = pick(about.interests, lang);
+
+/* Maps a BioSegment ink name straight to its Tailwind utility — the
+   names match on purpose (see BioSegment in config.ts). */
+const BIO_ACCENT_CLASS: Record<string, string> = {
+  accentPrimary: "text-accent-primary",
+  accentSecondary: "text-accent-secondary",
+  accentTertiary: "text-accent-tertiary",
+};
+
+/* `native` is the language's own name and its own word for the level
+   — never translated, and the same regardless of page language (see
+   about.languages in config.ts). The column it swaps to is built
+   from the dictionary, so it is always in the page's language. */
+const languages = about.languages.map((entry) => ({
+  ...entry,
+  international: t.about.languageNames[entry.native] ?? entry.native,
+  level: entry.learning ? t.about.levels.learning : t.about.levels.fluent,
+}));
+
+---
+
+<Sheet id="about" index={1} label={t.about.label} title={t.about.title} boxed>
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_20rem] gap-12 lg:gap-20 items-start">
+    {/* Bio and interests share the left column. Splitting them so the
+        interests ran full width left a column of dead sheet beside the
+        five-row language table — the prose is four lines and the table
+        is nearly three times that. */}
+    <div class="reveal">
+      <p class="text-text-muted text-lg leading-relaxed max-w-2xl">
+        {bio.map((seg) =>
+          seg.style === "strong" ? (
+            <span class="text-[var(--text-primary)] font-medium">{seg.text}</span>
+          ) : seg.style && BIO_ACCENT_CLASS[seg.style] ? (
+            /* Four work-domain callouts, three inks: each gets its own
+               accent so the callouts read as separate terms instead of
+               one undifferentiated run. That spends cyan (accentPrimary)
+               on static prose — everywhere else on the site cyan means
+               "you can act on this" — which is a knowing exception, not
+               an oversight. Weight 500 keeps the signal from being
+               colour alone; `underline` is the same idea for the one
+               callout that has to reuse an ink because there are more
+               callouts than inks. */
+            <span class:list={[BIO_ACCENT_CLASS[seg.style], "font-medium", { "bio-underline": seg.underline }]}>{seg.text}</span>
+          ) : (
+            <Fragment>{seg.text}</Fragment>
+          )
+        )}
+      </p>
+
+      <p class="eyebrow text-text-muted mt-10 mb-4">{t.about.interestsLabel}</p>
+      <ul class="interests flex flex-wrap gap-x-3 gap-y-2 max-w-2xl">
+        {interests.map((interest) => (
+          <li class="font-mono text-sm text-text-muted">{interest}</li>
+        ))}
+      </ul>
+    </div>
+
+    <!-- Language spec table: hover a row to translate it -->
+    <div class="reveal w-full">
+      <p class="eyebrow text-text-muted mb-4">{t.about.languagesLabel}</p>
+      <dl class="lang-table">
+        {languages.map((entry) => (
+          <div
+            class="lang-badge flex items-baseline justify-between gap-6 py-3 border-t border-faint"
+            data-learning={entry.learning ? "true" : "false"}
+            data-no-swap={entry.native === entry.international ? "true" : "false"}
+            data-native={entry.native}
+            data-intl={entry.international}
+            data-native-level={entry.levelNative}
+            data-intl-level={entry.level}
+          >
+            <dt class={`lang-text font-mono text-base ${entry.learning ? "text-text-muted" : "text-accent-primary"}`}>
+              {entry.native}
+            </dt>
+            <dd class="lang-level data-label text-text-muted text-right">{entry.levelNative}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  </div>
+</Sheet>
+
+<style>
+  /* Separator trails each item, so a wrapped line never starts with one */
+  .interests li:not(:last-child)::after {
+    content: " ·";
+    color: var(--text-muted);
+    opacity: 0.35;
+  }
+
+  .lang-table > div:last-child {
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .lang-badge {
+    transition: border-color 0.3s var(--ease-out-expo);
+  }
+  .lang-badge:hover {
+    border-top-color: var(--border-subtle);
+  }
+  .lang-badge[data-learning="true"] .lang-text,
+  .lang-badge[data-learning="true"] .lang-level {
+    opacity: var(--learning-opacity, 0.65);
+  }
+
+  /* Second signal (not just colour) for a bio callout that reuses an
+     ink — see the BIO_ACCENT_CLASS comment above. currentColor keeps it
+     locked to whichever accent the span is set to. */
+  .bio-underline {
+    text-decoration: underline;
+    text-decoration-color: currentColor;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+</style>
+
+<script>
+  /* Language rows translate on hover: the name and its level both
+     scramble from the language's own words into the page's language,
+     and back on leave. Rows already in that language (data-no-swap)
+     sit still. */
+
+  import { onPageLoad, prefersReducedMotion } from '../../scripts/lifecycle';
+
+  const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*!?';
+  const DURATION = 400;
+
+  /** Scramble one element's text from `from` to `to`; returns a cancel fn. */
+  function scramble(el: HTMLElement, from: string, to: string, instant: boolean) {
+    if (instant) {
+      el.textContent = to;
+      return () => {};
+    }
+
+    const maxLen = Math.max(from.length, to.length);
+    const start = performance.now();
+    let raf = 0;
+
+    const tick = () => {
+      const progress = Math.min((performance.now() - start) / DURATION, 1);
+      let display = '';
+
+      for (let i = 0; i < maxLen; i++) {
+        const target = i < to.length ? to[i] : '';
+        const source = i < from.length ? from[i] : '';
+        // Stagger so characters resolve left to right
+        const charProgress = Math.max(0, (progress - (i / maxLen) * 0.5) / 0.5);
+
+        if (target === ' ' || (source === ' ' && charProgress < 1)) {
+          display += charProgress >= 1 ? target : source;  // keep spaces put
+        } else if (charProgress >= 1) {
+          display += target;
+        } else if (charProgress <= 0) {
+          display += source;
+        } else {
+          display += GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
+        }
+      }
+
+      el.textContent = display;
+      if (progress < 1) raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }
+
+  onPageLoad((scope) => {
+    const instant = prefersReducedMotion();
+
+    document
+      .querySelectorAll<HTMLElement>('.lang-badge:not([data-no-swap="true"])')
+      .forEach((row) => {
+        const nameEl = row.querySelector<HTMLElement>('.lang-text');
+        const levelEl = row.querySelector<HTMLElement>('.lang-level');
+        if (!nameEl || !levelEl) return;
+
+        const native = [row.dataset.native ?? '', row.dataset.nativeLevel ?? ''];
+        const intl = [row.dataset.intl ?? '', row.dataset.intlLevel ?? ''];
+
+        let showing: 'native' | 'intl' = 'native';
+        let cancels: (() => void)[] = [];
+
+        const swap = (to: 'native' | 'intl') => {
+          if (showing === to) return;
+          cancels.forEach((c) => c());
+          const [fromName, fromLevel] = showing === 'native' ? native : intl;
+          const [toName, toLevel] = to === 'native' ? native : intl;
+          cancels = [
+            scramble(nameEl, fromName, toName, instant),
+            scramble(levelEl, fromLevel, toLevel, instant),
+          ];
+          showing = to;
+        };
+
+        row.addEventListener('mouseenter', () => swap('intl'), { signal: scope.signal });
+        row.addEventListener('mouseleave', () => swap('native'), { signal: scope.signal });
+      });
+  });
+</script>

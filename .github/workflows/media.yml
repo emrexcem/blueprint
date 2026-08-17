@@ -1,0 +1,68 @@
+name: Media
+
+# The README's stills, captured from a real build so that a change to the
+# design is a re-run rather than an afternoon of re-cropping.
+#
+# The interaction recordings — the skill-tree drag, the project card tilt,
+# the theme toggle — are deliberately not here and stay hand-recorded. A
+# headless browser can dispatch those gestures but not perform them: a
+# synthetic drag moves the rope without the hesitation that makes the
+# physics read, and the clip ends up selling the feature short. Do not
+# fold them into this workflow.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Playwright is not a tracked dependency. One manual workflow wants
+      # it and nothing else does, so tracking it would charge every person
+      # who installs the theme a browser automation stack for the privilege
+      # of running `npm run dev`.
+      - name: Install Playwright
+        run: |
+          npm i -D --no-save playwright
+          npx playwright install --with-deps chromium
+
+      # Built with SHOWCASE so the captures come from the same artefact the
+      # demo publishes. The base stays at the root: the preview server
+      # serves it from /, and a base path has no bearing on what a
+      # screenshot looks like.
+      - name: Build the demo
+        env:
+          SHOWCASE: 1
+        run: npm run build
+
+      # The server and the capture share one step, so the background
+      # process is certain to still be alive when the script needs it.
+      # Polling for the port beats sleeping a fixed interval, which is
+      # either flaky or wasteful and usually both.
+      - name: Capture
+        run: |
+          npm run preview -- --host 127.0.0.1 --port 4173 &
+          preview=$!
+          for _ in $(seq 1 60); do
+            curl -sfo /dev/null http://127.0.0.1:4173/ && break
+            sleep 1
+          done
+          node scripts/capture-media.mjs --base-url http://127.0.0.1:4173 --out docs/media
+          kill "$preview"
+
+      # Downloaded and committed by hand. Images that land in the tree
+      # because a workflow put them there are images nobody looked at.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: readme-stills
+          path: docs/media
+          if-no-files-found: error

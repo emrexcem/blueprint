@@ -1,0 +1,14 @@
+---
+/*  src/pages/de/blog/[...slug].astro — German post route.
+    Same posts, same slugs, German chrome. */
+import BlogPostPage from "../../../components/pages/BlogPostPage.astro";
+import { postPaths } from "../../../lib/posts";
+
+export async function getStaticPaths() {
+  return postPaths();
+}
+
+const { post } = Astro.props;
+---
+
+<BlogPostPage post={post} />

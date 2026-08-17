@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  # A branch push and the pull request opened from it would otherwise run
+  # this twice for every commit, so only the default branch is watched
+  # directly and everything else arrives as a pull request.
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run check
+
+      # There is no test runner here; `npm run build` is the test suite.
+      # prebuild regenerates the skill-tree layout and asserts that every
+      # pair of pills clears its neighbour on the emitted, rounded numbers;
+      # postbuild subsets the fonts and asserts the mono's advance ratio,
+      # which is the constant every pill width is computed from. Both exit
+      # non-zero, so a green build means the layout engine and the type are
+      # sound in a way a lint pass could not tell you.
+      - name: Build
+        run: npm run build
+
+      # The build regenerates src/data/skill-layout.json, which is tracked,
+      # and the solver is deterministic — so if the build moved it, the
+      # committed positions did not match the committed skills. That is a
+      # skills.ts edit whose `npm run layout` was never committed, and the
+      # site would ship a drawing of the previous skill set.
+      - name: Assert the committed skill-tree layout is current
+        run: |
+          if ! git diff --quiet -- src/data/skill-layout.json; then
+            echo "src/data/skill-layout.json is stale — run 'npm run layout' and commit it:"
+            git --no-pager diff --stat -- src/data/skill-layout.json
+            exit 1
+          fi
+
+      # SHOWCASE is unset above, so the demo-only variation strip must have
+      # left no trace at all — no markup, no styles, no script. grep exits 1
+      # when it finds nothing, which is the outcome this step wants, so the
+      # match drives an explicit failure rather than the step's exit code.
+      - name: Assert the variation strip is absent without SHOWCASE
+        run: |
+          if grep -rq "variation-bar" dist; then
+            echo "SHOWCASE is unset, but the variation strip reached the build output:"
+            grep -rl "variation-bar" dist
+            exit 1
+          fi
+
+      # src/config.ts holds site identity, projects and experience in
+      # both languages in one module now, so correctness of the
+      # untranslated-copy split depends on Rollup shaking the German half
+      # out of what the client entry points import — "should" is not
+      # "does". Two canaries, both German-only, and they cover different
+      # cases. "Tüftlerin" exists only in `site.de`, and `site` is
+      # genuinely reachable from client JS via Hero.astro's bundled
+      # <script> (values, config.ts's other client-facing export, is
+      # reached the same way plus by hero-parallax.ts and ProjectCard.tsx),
+      # so this is property-level shaking of a referenced object — the
+      # hard case.
+      # "Echtzeit-Renderer" exists only in the Voxel Cone Renderer
+      # project's German description, covering the export-level case
+      # (no client entry point imports `projects` at all today, so this
+      # one is a regression guard rather than a live risk). Either string
+      # in a client chunk means config.ts failed to tree-shake and both
+      # languages shipped to the browser.
+      - name: Assert untranslated content did not leak into the client bundle
+        run: |
+          for canary in "Tüftlerin" "Echtzeit-Renderer"; do
+            if grep -rq "$canary" dist/_astro/; then
+              echo "German-only content string '$canary' found in a client bundle — config.ts is not tree-shaking:"
+              grep -rl "$canary" dist/_astro/
+              exit 1
+            fi
+          done
+
+      # Fonts, favicon, feed and the i18n path helpers all resolve through
+      # import.meta.env.BASE_URL, and a regression there surfaces as 404s
+      # under a subpath — which a build at the root cannot show you. A fork
+      # served from https://<owner>.github.io/<repo>/ is exactly this shape,
+      # so the subpath build is the case that protects other people's forks.
+      - name: Build under a subpath
+        env:
+          SITE_URL: https://example.github.io
+          BASE_PATH: /blueprint/
+        run: npm run build

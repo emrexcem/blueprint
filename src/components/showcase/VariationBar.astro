@@ -1,0 +1,435 @@
+---
+/*  VariationBar.astro
+    The demo's control rail: one cell per variation axis, pinned to the
+    foot of the viewport.
+
+    It is deliberately not a second title block. In this vocabulary a
+    title block means "sheet index" and the footer already draws one;
+    this is the drafting table's control rail *under* the sheet, so it
+    takes a hairline top rule and the plate surface, and leaves the
+    corner notch to the one thing you press.
+
+    All it ever does is write a `data-*` attribute on <html>. Every
+    variation is a token block in global.css keyed off one of those
+    attributes and nothing in the theme branches on them — which is the
+    rule that keeps a variation system from leaking into every file it
+    varies.
+
+    Demo only. BaseLayout renders this behind `import.meta.env.SHOWCASE`,
+    and both the script and the style below are `is:inline` so that a
+    build with the flag off ships neither: a hoisted module script is
+    bundled for every component in a page's graph whether or not it
+    renders, and a component's scoped CSS is collected the same way.
+    Inline is the one form emitted exactly when the element is. For the
+    same reason there is not a single Tailwind utility in the markup —
+    Tailwind generates from a scan of the source files, so a class used
+    only here would land in every build's stylesheet.               */
+
+import { theme, type Corner, type Grid, type Motion, type Palette, type Presets, type Rule } from "../../config";
+import { getLang, useTranslations } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+type Value = Palette | Corner | Grid | Rule | Motion;
+
+/* A union is a type and a type cannot be iterated, so each axis's
+   options are written out once here and annotated against the union in
+   config.ts: rename a value there and this file stops compiling. */
+const PALETTES: readonly Palette[] = ["blueprint", "redline", "verdigris", "graphite"];
+const CORNERS: readonly Corner[] = ["notched", "square", "soft"];
+const GRIDS: readonly Grid[] = ["ruled", "coarse", "plain"];
+const RULES: readonly Rule[] = ["hairline", "bold"];
+const MOTIONS: readonly Motion[] = ["system", "full", "reduced"];
+
+const axes: { key: keyof Presets; values: readonly Value[] }[] = [
+  { key: "palette", values: PALETTES },
+  { key: "corner", values: CORNERS },
+  { key: "grid", values: GRIDS },
+  { key: "rule", values: RULES },
+  { key: "motion", values: MOTIONS },
+];
+
+/* What the page was served as, so the rail opens marking the state the
+   visitor is actually looking at. A stored choice is applied to <html>
+   before first paint (the applier in BaseLayout's head) and the script
+   below moves the mark to match. */
+const shipped = theme;
+---
+
+{/* `hidden` until the script takes it, and this is the one deliberate
+    exception to "nothing in CSS may hide content that JS later
+    reveals": the strip is a control, not content. Every cell of it
+    does nothing without script, and a dead row of radio buttons across
+    the foot of the page is worse than no row at all.
+
+    The persist name is keyed to the language. Within a language the
+    node survives navigation and its listeners with it; across a
+    language switch the names do not match, so the strip is replaced by
+    one whose labels are in the language now being read, instead of
+    persisting English copy into /de/. */}
+<div
+  class="variation-bar"
+  id="vbar"
+  hidden
+  transition:persist={`variation-bar-${lang}`}
+>
+  <div class="vbar-rail" id="vbar-controls">
+    <span class="vbar-title">{t.showcase.label}</span>
+
+    <div class="vbar-scroll">
+      {axes.map((axis) => (
+        <div class="vbar-cell" role="radiogroup" aria-labelledby={`vbar-${axis.key}-label`}>
+          <span class="vbar-axis" id={`vbar-${axis.key}-label`}>{t.showcase.axes[axis.key]}</span>
+          <div class="vbar-opts">
+            {axis.values.map((value) => (
+              /* Native radios, grouped by `name`: the browser gives the
+                 group one tab stop and arrow keys that move and choose
+                 in one press, which on a strip this dense is worth more
+                 than any styling a <button role="radio"> would buy. The
+                 input is not hidden — it is laid over its own label,
+                 transparent and with its appearance stripped — so the
+                 focus mark from global.css lands on the label's box and
+                 there is nothing here to restyle. */
+              <span class="vbar-opt">
+                <input
+                  type="radio"
+                  id={`vbar-${axis.key}-${value}`}
+                  name={`vbar-${axis.key}`}
+                  data-axis={axis.key}
+                  data-value={value}
+                  checked={shipped[axis.key] === value}
+                />
+                <label for={`vbar-${axis.key}-${value}`}>{t.showcase.values[value]}</label>
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  {/* The notch marks a plate as interactive, so it belongs on the
+      control and not on the rail. The two state names are handed over
+      as data attributes because a bundled script cannot know which
+      language rendered the page — the same reason the hero's roles and
+      the blog filter's strings travel that way. */}
+  <button
+    type="button"
+    class="vbar-toggle plate plate-notch"
+    id="vbar-toggle"
+    aria-expanded="true"
+    aria-controls="vbar-controls"
+    aria-label={t.showcase.collapse}
+    data-expand={t.showcase.expand}
+    data-collapse={t.showcase.collapse}
+  >
+    <span class="vbar-toggle-label">{t.showcase.label}</span>
+    <span class="vbar-chevron" aria-hidden="true">▾</span>
+  </button>
+
+  <style is:inline>
+    /* ── Published height ───────────────────────────────────────
+       The strip's height is a design constant, not a measurement.
+       global.css declares `--strip-h: 0px` and these two rules are
+       the only things that raise it, so the footer's clearance and
+       `scroll-padding-bottom` follow the strip open, collapsed and
+       absent — the no-JS case sets no attribute and therefore
+       reserves nothing. Nothing anywhere reads a bounding box.
+       Precedent: --nav-h, published by the navbar for the same
+       reason. */
+    :root {
+      --vbar-rail-h: 52px;
+    }
+    :root[data-strip="open"] {
+      --strip-h: var(--vbar-rail-h);
+    }
+    :root[data-strip="collapsed"] {
+      --strip-h: 28px;
+    }
+
+    /* ── Rail ───────────────────────────────────────────────── */
+    .variation-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      /* Zero-height: both children hang off the bottom edge, so the
+         rail can slide out from under the tab without the container
+         following it. */
+      height: 0;
+      /* Above page content, below the navbar's 50 and a post's reading
+         progress bar at 60 — the demo's chrome never covers the site's.
+         Nothing else is drawn at the foot of the viewport. */
+      z-index: 45;
+      /* Collapsed, only the tab is left; the empty width either side of
+         it must not swallow clicks on the page underneath. */
+      pointer-events: none;
+      font-family: var(--font-mono);
+    }
+    /* Written out rather than left to the UA rule behind [hidden],
+       because any `display` on .variation-bar would beat it and the no-JS state
+       would quietly become a visible, inert strip. */
+    .variation-bar[hidden] {
+      display: none;
+    }
+
+    .vbar-rail {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: var(--vbar-rail-h);
+      display: flex;
+      align-items: stretch;
+      pointer-events: auto;
+      /* The plate tint is translucent in dark mode and this sits over
+         the page, so the tint is composited onto the page colour: the
+         rail is opaque and still exactly the colour a plate is. */
+      background: linear-gradient(var(--surface-plate), var(--surface-plate)) var(--bg-dark);
+      border-top: 1px solid var(--border-subtle);
+      /* Holds the last cell clear of the toggle, which is placed over
+         the rail's right end rather than in its flow — it has to stay
+         put when the rail slides away. */
+      padding-right: 4.25rem;
+    }
+
+    :root[data-strip="collapsed"] .vbar-rail {
+      transform: translateY(100%);
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .vbar-rail {
+        transition: transform 0.35s var(--ease-out-expo);
+      }
+      .vbar-chevron {
+        transition: transform 0.35s var(--ease-out-expo);
+      }
+    }
+
+    /* ── Cells ──────────────────────────────────────────────── */
+    .vbar-title,
+    .vbar-axis {
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      line-height: 1;
+      color: var(--text-muted);
+    }
+
+    .vbar-title {
+      display: flex;
+      align-items: center;
+      padding: 0 1.125rem;
+      border-right: 1px solid var(--border-faint);
+      white-space: nowrap;
+    }
+
+    /* Under 700px five cells cannot share the line at this tracking, so
+       the rail scrolls and the published height stays true — wrapping
+       to a second row would make --strip-h a function of the viewport,
+       and the clearance underneath it would have to follow. The rail's
+       own name is the first thing worth dropping: the collapsed tab and
+       the toggle's label both still carry it. */
+    @media (max-width: 699px) {
+      .vbar-title {
+        display: none;
+      }
+    }
+
+    .vbar-scroll {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: stretch;
+      overflow-x: auto;
+      /* Tab walks the cells and scrolls them into view; the inline
+         padding keeps the focus mark, which is drawn 3px outside its
+         control, off this box's clipped edge. The cells' own side
+         padding does the same at rest. */
+      scroll-padding-inline: 0.75rem;
+      /* A scrollbar inside a 52px rail costs a fifth of its height and
+         lands under the option labels. The rail takes a drag or a
+         trackpad, and Tab reaches every control in it. */
+      scrollbar-width: none;
+    }
+    .vbar-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .vbar-cell {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.3125rem;
+      padding: 0 1rem;
+      border-right: 1px solid var(--border-faint);
+    }
+
+    .vbar-opts {
+      display: flex;
+      gap: 0.625rem;
+    }
+
+    /* ── Options ────────────────────────────────────────────── */
+    .vbar-opt {
+      position: relative;
+      display: inline-flex;
+    }
+    .vbar-opt input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      appearance: none;
+      background: none;
+      border: 0;
+      cursor: pointer;
+    }
+    .vbar-opt label {
+      font-size: 0.75rem;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      line-height: 1.25;
+      padding: 2px 0;
+      color: var(--text-muted);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .vbar-opt input:hover + label {
+      color: var(--text-primary);
+    }
+    /* The mark on the live option. Declared after the hover rule, which
+       it has to beat on equal specificity: hovering the option you are
+       already on has nowhere to go, so it stays in the accent. */
+    .vbar-opt input:checked + label {
+      color: var(--accent-primary);
+    }
+
+    /* ── Collapse control ───────────────────────────────────── */
+    .vbar-toggle {
+      position: absolute;
+      right: 1.25rem;
+      bottom: 0;
+      /* The strip's height in both states, so open it is exactly as
+         tall as the rail — the two top borders land on the same pixel
+         row and read as one rule — and collapsed it is the tab. */
+      height: var(--strip-h);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0 0.875rem;
+      pointer-events: auto;
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      /* .plate's surface, made opaque the way the rail's is. This beats
+         .plate at equal specificity on document order — the mirror of
+         the layer rule that stops a Tailwind utility doing the same:
+         an unlayered rule later in the document wins, a utility in
+         @layer utilities never does. */
+      background: linear-gradient(var(--surface-plate), var(--surface-plate)) var(--bg-dark);
+    }
+    .vbar-toggle:hover {
+      color: var(--text-primary);
+      border-color: rgb(var(--accent-primary-rgb) / 0.4);
+    }
+
+    /* The rail carries the strip's name while it is open, so the button
+       is a glyph; collapsed, the tab has to say what it opens. */
+    .vbar-toggle-label {
+      display: none;
+    }
+    :root[data-strip="collapsed"] .vbar-toggle-label {
+      display: inline;
+    }
+
+    .vbar-chevron {
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+    :root[data-strip="collapsed"] .vbar-chevron {
+      transform: rotate(180deg);
+    }
+  </style>
+
+  {/* Inline for the reason at the top of this file, and `data-astro-rerun`
+      because ClientRouter runs a given script body once per session:
+      without it the strip that arrives on a language switch would never
+      be wired and would stay hidden. */}
+  <script is:inline data-astro-rerun>
+    (() => {
+      const bar = document.getElementById("vbar");
+      /* Re-run, but the node it belongs to may be the one that just
+         survived a navigation with its listeners intact. */
+      if (!bar || bar.hasAttribute("data-wired")) return;
+      bar.setAttribute("data-wired", "");
+
+      const rail = document.getElementById("vbar-controls");
+      const toggle = document.getElementById("vbar-toggle");
+      const root = document.documentElement;
+      const KEY = "showcase:";
+
+      /* Mirror <html> back into the controls. This only ever *checks* a
+         radio: the shipped default is checked in the markup and
+         checking a stored one unchecks it, so a value left in storage
+         that this build no longer offers leaves the default marked —
+         which is what the page is showing anyway. */
+      const sync = () => {
+        for (const input of bar.querySelectorAll("input[data-axis]")) {
+          if (root.getAttribute("data-" + input.dataset.axis) === input.dataset.value) {
+            input.checked = true;
+          }
+        }
+      };
+
+      /* One variable for the height in both states, switched by an
+         attribute on <html> so the two numbers stay in the CSS and this
+         script carries none. ClientRouter replaces <html>'s attributes
+         on every navigation, which is why it is re-applied after a
+         swap. */
+      const setCollapsed = (collapsed) => {
+        root.setAttribute("data-strip", collapsed ? "collapsed" : "open");
+        /* The rail only translates out of view, so without this its
+           fifteen controls stay in the tab order while invisible. */
+        rail.inert = collapsed;
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        toggle.setAttribute(
+          "aria-label",
+          collapsed ? toggle.dataset.expand : toggle.dataset.collapse
+        );
+      };
+
+      /* Both before the strip is shown, so the state it opens in does
+         not animate in from the other one. */
+      setCollapsed(localStorage.getItem(KEY + "strip") === "collapsed");
+      sync();
+      bar.hidden = false;
+
+      bar.addEventListener("change", (event) => {
+        const axis = event.target.dataset && event.target.dataset.axis;
+        if (!axis) return;
+        root.setAttribute("data-" + axis, event.target.dataset.value);
+        localStorage.setItem(KEY + axis, event.target.dataset.value);
+      });
+
+      toggle.addEventListener("click", () => {
+        const collapsed = toggle.getAttribute("aria-expanded") === "true";
+        setCollapsed(collapsed);
+        localStorage.setItem(KEY + "strip", collapsed ? "collapsed" : "open");
+      });
+
+      document.addEventListener("astro:after-swap", () => {
+        /* After a language switch this closure holds a strip that is no
+           longer in the document; the fresh one wires itself. */
+        if (!bar.isConnected) return;
+        setCollapsed(localStorage.getItem(KEY + "strip") === "collapsed");
+        sync();
+      });
+    })();
+  </script>
+</div>

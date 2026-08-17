@@ -1,0 +1,180 @@
+---
+/*  BaseLayout.astro
+    Wraps every page. Loads fonts, global CSS, the view-transition
+    router, and the scroll-reveal IntersectionObserver.
+
+    Language comes from the URL (`/de/...` → German), so pages never
+    pass it down; each component asks for it directly.           */
+
+import { ClientRouter } from "astro:transitions";
+import "../styles/global.css";
+import { DICTS, LOCALES } from "../i18n/ui";
+import { getLang, localizePath, pick, stripLang, useTranslations, withBase } from "../i18n";
+import { SHOWCASE, rootAttrs, rootStyle, site } from "../config";
+import VariationBar from "../components/showcase/VariationBar.astro";
+
+interface Props {
+  title?: string;
+  description?: string;
+  ogImage?: string;
+  ogType?: "website" | "article";
+}
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+const person = pick(site, lang);
+
+const {
+  title = `${site.author} — ${person.headline}`,
+  description = person.description,
+  ogImage,
+  ogType = "website",
+} = Astro.props;
+
+/* `Astro.url.pathname` already carries the deployment base, and an
+   absolute path resolved against `Astro.site` (an origin) keeps it. */
+const canonical = new URL(Astro.url.pathname, Astro.site);
+
+/* Both language versions of this page, for hreflang. Search engines
+   need every alternate listed on every version, including a self
+   reference, plus an x-default pointing at the unprefixed one.
+
+   `stripLang` gives the page's base-free logical key; `localizePath`
+   and `withBase` put the base back on the way out, so these stay
+   correct under a subpath deployment. */
+const pageKey = stripLang(Astro.url.pathname);
+const alternates = LOCALES.map((code) => ({
+  code,
+  href: new URL(localizePath(pageKey, code), Astro.site).href,
+}));
+const xDefault = new URL(withBase(pageKey), Astro.site).href;
+
+/* Variation attributes and the continuous knobs, both from
+   src/config.ts. Anything already true of `:root` is left off,
+   so a default build serves a bare tag and only a customised one
+   carries attributes. */
+const variation = rootAttrs();
+const knobs = rootStyle();
+---
+
+<!doctype html>
+<html lang={t.htmlLang} class="dark" style={knobs} {...variation}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title}</title>
+    <link rel="canonical" href={canonical} />
+
+    <!-- Language alternates -->
+    {alternates.map((alt) => (
+      <link rel="alternate" hreflang={alt.code} href={alt.href} />
+    ))}
+    <link rel="alternate" hreflang="x-default" href={xDefault} />
+
+    <!-- Social cards -->
+    <meta property="og:type" content={ogType} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:locale" content={t.ogLocale} />
+    {LOCALES.filter((code) => code !== lang).map((code) => (
+      <meta property="og:locale:alternate" content={DICTS[code].ogLocale} />
+    ))}
+    <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"} />
+    {ogImage && <meta property="og:image" content={ogImage} />}
+    {ogImage && <meta name="twitter:image" content={ogImage} />}
+
+    <!-- Favicon + feed -->
+    <link rel="icon" type="image/svg+xml" href={withBase("/favicon.svg")} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={t.meta.blogTitle}
+      href={new URL(withBase("/rss.xml"), Astro.site)}
+    />
+
+    <!-- Theme, applied before first paint so light-mode visitors get no dark
+         flash. A visitor who has used the toggle keeps that choice; everyone
+         else follows the operating system, and keeps following it if they
+         change it mid-visit. ClientRouter swaps <html> attributes, so
+         re-apply after each. -->
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const os = matchMedia("(prefers-color-scheme: light)");
+        const apply = () => {
+          const stored = localStorage.getItem("theme");
+          const light =
+            stored === "light" || stored === "dark"
+              ? stored === "light"
+              : os.matches;
+          root.classList.toggle("light", light);
+          root.classList.toggle("dark", !light);
+        };
+        apply();
+        document.addEventListener("astro:after-swap", apply);
+        os.addEventListener("change", apply);
+      })();
+    </script>
+
+    <!-- Variation presets, applied before first paint for the reason the theme
+         is: a visitor who has chosen a palette must not be shown the default
+         one first. Showcase builds only, so a fork ships neither this nor the
+         strip that writes the keys. ClientRouter replaces <html>'s attributes
+         on navigation, so re-apply after each swap — it fires that event before
+         re-running body scripts, which is the order the strip relies on to mark
+         the live option. -->
+    {SHOWCASE && (
+      <script is:inline>
+        (() => {
+          const root = document.documentElement;
+          const AXES = ["palette", "corner", "grid", "rule", "motion"];
+          const apply = () => {
+            for (const axis of AXES) {
+              const stored = localStorage.getItem("showcase:" + axis);
+              if (stored) root.setAttribute("data-" + axis, stored);
+            }
+          };
+          apply();
+          document.addEventListener("astro:after-swap", apply);
+        })();
+      </script>
+    )}
+
+    <ClientRouter />
+
+    <!-- Self-hosted type: the four faces used above the fold -->
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href={withBase("/fonts/geist/Geist-Regular.woff2")} />
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href={withBase("/fonts/geist/Geist-Medium.woff2")} />
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href={withBase("/fonts/geist/Geist-Bold.woff2")} />
+    <link rel="preload" as="font" type="font/woff2" crossorigin
+      href={withBase("/fonts/geist-mono/GeistMono-Regular.woff2")} />
+  </head>
+
+  <body class="min-h-screen">
+    <slot />
+
+    {SHOWCASE && <VariationBar />}
+
+    <!-- Theme toggle logic (initial class is set pre-paint in <head>) -->
+    <script>
+      const html = document.documentElement;
+
+      window.toggleTheme = () => {
+        const isLight = html.classList.contains("light");
+        html.classList.toggle("light", !isLight);
+        html.classList.toggle("dark", isLight);
+        localStorage.setItem("theme", isLight ? "dark" : "light");
+      };
+    </script>
+
+    <!-- Enhancement scripts -->
+    <script>
+      import "../scripts/hero-parallax.ts";
+    </script>
+  </body>
+</html>

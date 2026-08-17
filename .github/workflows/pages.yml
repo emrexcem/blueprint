@@ -1,0 +1,72 @@
+name: Demo
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# A publish that is interrupted halfway leaves the live demo in a state
+# nobody chose, which is worse than a queue: pushes wait for the deploy in
+# flight rather than cancelling it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Derived rather than written down, because this is a template: a fork
+      # that switches Pages on gets a correct build without editing a file.
+      # GITHUB_REPOSITORY is owner/repo, and the host is the owner
+      # lowercased — github.io is case-sensitive where GitHub's own UI is
+      # not. A repository named <owner>.github.io is the account's user site
+      # and is served from the origin root, so it takes no base at all.
+      - name: Derive the site origin and base path from the repository
+        run: |
+          owner="${GITHUB_REPOSITORY%%/*}"
+          repo="${GITHUB_REPOSITORY#*/}"
+          host="${owner,,}.github.io"
+          if [ "${repo,,}" = "$host" ]; then
+            base="/"
+          else
+            base="/$repo/"
+          fi
+          echo "SITE_URL=https://$host" >> "$GITHUB_ENV"
+          echo "BASE_PATH=$base" >> "$GITHUB_ENV"
+
+      # SHOWCASE turns on the variation control strip, which is demo
+      # furniture: it is here so a visitor can try the palettes and presets
+      # without cloning anything, and it ships in no other build.
+      - name: Build the demo
+        env:
+          SHOWCASE: 1
+        run: npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

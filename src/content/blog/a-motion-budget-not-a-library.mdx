@@ -1,0 +1,107 @@
+---
+title: "A motion budget, not a motion library"
+description: "This site animates four things and ships 1.2 KB to do it. The version with GSAP shipped 46 KB for the same choreography — and the thing that actually improved when the library came out was not the size."
+date: 2026-07-29
+tags: ["motion", "performance", "css", "accessibility"]
+---
+
+This site has four pieces of motion in it. The hero's load sequence, one
+scroll-entrance pattern shared by every section, the skill tree's physics, and
+the role line that cycles under my name. That is the whole budget, and it is a
+budget in the real sense: adding a fifth means arguing for it against the four
+that are already there.
+
+Getting to four took removing things, not adding them. So did getting to 1.2 KB.
+
+## The measurement
+
+The scroll choreography was GSAP with ScrollTrigger. It is a good library, and
+I reached for it the way everyone does — because the first entrance I wanted
+was a stagger, and staggers are the thing GSAP makes trivial.
+
+| | gzipped | what it did |
+|---|---|---|
+| GSAP core + ScrollTrigger | 46 KB | the choreography below, plus everything else it can do |
+| `motion/engine.ts` | 1.2 KB | the choreography below |
+
+Forty-five kilobytes is not a catastrophe on a fast connection. It is,
+however, thirty-eight times the size of what replaced it, on a static site
+whose largest page is otherwise a few hundred kilobytes including the fonts —
+and it bought exactly one feature I was using.
+
+## What was actually needed
+
+Every animation on this site is an entrance. Something starts a little
+displaced and slightly transparent, and it arrives. Sometimes several things
+arrive in sequence, sometimes a row of them arrives in a stagger. That is a
+description of the Web Animations API with extra steps:
+
+```ts
+const steps: Step[] = [
+  { target: sheet.querySelector(".sheet-tb"),   from: { opacity: 0, x: -8 },  at: 0,    duration: 0.5 },
+  { target: sheet.querySelector("h1, h2"),      from: { opacity: 0, y: 18 },  at: 0.1,  duration: 0.7 },
+  { target: sheet.querySelector(".sheet-rule"), from: { scaleX: 0 },          at: 0.2,  duration: 0.9,
+    transformOrigin: "left center" },
+  { target: sheet.querySelector(".sheet-lede"), from: { opacity: 0, y: 10 },  at: 0.35, duration: 0.6 },
+];
+
+playOnEnter(sheet, steps, collect);
+```
+
+A title block slides in from the left, the heading lifts, the rule draws itself
+across, and the standfirst follows. One `IntersectionObserver`, shared by every
+section on the page, decides when. `Element.animate()` does the rest — it is in
+every browser this site supports, it runs off the main thread for opacity and
+transform, and it takes a keyframe list that looks like the object above.
+
+The helper that turns one into the other is 156 lines, comments and all.
+
+## The part that was not about size
+
+Here is the thing I did not expect. Writing the entrances by hand made two bugs
+impossible that the library version had shipped with for months.
+
+**The first: hiding content that JavaScript then reveals.** With GSAP the
+natural way to set a start state is a CSS class — `.reveal { opacity: 0 }` — and
+the script clears it. Which means that with JavaScript off, or broken, or still
+loading on a slow connection, the page is a set of empty sheets. The version
+here applies start states *at runtime*, through the animation's own backwards
+fill, so the served HTML is fully visible and stays that way if nothing ever
+runs. Nothing in the CSS may hide content that JavaScript later reveals. It is
+one rule, and it is only enforceable if you can see where the start states come
+from.
+
+**The second: animating things the visitor is already looking at.** A reveal
+that triggers on an element which is *already on screen* has to hide it first,
+which reads as a glitch — the thing you were reading blinks out and fades back.
+The fix is to measure before arming: anything already in the viewport is
+skipped outright and left exactly as the server sent it. That is also why the
+observer's root margin is *positive* on the bottom rather than negative; the
+entrance should be finished by the time the element is comfortably in view, not
+starting.
+
+Both fixes are four lines each. Neither is hard. Both were invisible to me
+while the library owned the start states.
+
+## Turning it down
+
+`prefers-reduced-motion` is not a special case bolted on at the end — it is
+consulted in the same place the observer is armed, and when it is set, nothing
+is armed at all. No start states are applied, no animations are created, and
+the page is the served HTML. The skill tree checks the same predicate and
+renders its static variant, which is the same composition without the physics.
+
+The result is a site that has one honest fallback rather than three
+approximations of one: reduced motion, JavaScript off, and a failed script all
+land on exactly the same page.
+
+## When a library is right
+
+If I were building a product with a motion system — shared timelines, sequenced
+route transitions, scroll-linked scrubbing, motion paths, thirty components
+that all need to agree — I would install GSAP again tomorrow, and I would not
+consider a hundred and fifty lines of helper a serious alternative.
+
+This is not that. This is four animations that each happen once. The budget is
+the design decision; the byte count is just what falls out of taking it
+seriously.

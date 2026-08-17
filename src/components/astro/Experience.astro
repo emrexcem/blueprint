@@ -1,0 +1,362 @@
+---
+/* Experience.astro
+   A ledger: every entry on the sheet at once, with a span track that
+   plots each one against a shared time axis.
+
+   This replaced a one-card-at-a-time snap carousel. Four chronological
+   entries are not a gallery — the carousel hid three quarters of the
+   section behind an interaction, left ~250px of dead space inside the
+   one card it did show, and needed prev/next/dots/scroll-sync plus the
+   ARIA carousel pattern to be usable. A ruled list needs none of that
+   and says more. The hire card was slide one, which meant the page
+   opened having already scrolled past it; it now stands above the
+   ledger, where it is an offer rather than an entry.
+
+   Each entry carries its own dates, links, type and prose together —
+   `src/config.ts`'s `experience` array, resolved per language with
+   `pick()`. There is no separate structural array to keep zipped
+   against a translation file anymore: add an entry anywhere in that
+   array and its prose can never attach to the wrong one.            */
+
+import Sheet from "./Sheet.astro";
+import { experience } from "../../config";
+import { getLang, pick, useTranslations } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const timeline = experience.map((entry) => {
+  const text = pick(entry, lang);
+  return {
+    type: entry.type,
+    from: entry.from,
+    to: entry.to,
+    orgLink: "orgLink" in entry ? entry.orgLink : undefined,
+    current: "current" in entry ? entry.current : undefined,
+    title: text.title,
+    org: text.org,
+    description: text.description,
+    period: `${entry.from} — ${entry.to ?? "?"}`,
+  };
+});
+
+const hire = timeline[0];
+/* Newest first, which is how a CV is read. */
+const entries = timeline.slice(1).sort((a, b) => b.from - a.from);
+
+/* The axis is measured from the entries, so adding one re-scales the
+   track instead of needing a constant retuned. */
+const axisFrom = Math.min(...entries.map((e) => e.from));
+const axisTo = Math.max(...entries.map((e) => e.to ?? e.from));
+const axisSpan = axisTo - axisFrom;
+
+const track = (entry: (typeof entries)[number]) => ({
+  left: `${((entry.from - axisFrom) / axisSpan) * 100}%`,
+  width: `${(((entry.to ?? axisFrom) - entry.from) / axisSpan) * 100}%`,
+});
+---
+
+<Sheet
+  id="experience"
+  index={4}
+  label={t.experience.label}
+  title={t.experience.title}
+  boxed
+>
+  {/* === The offer, not an entry === */}
+  <article class="hire-card plate p-8 md:p-10 relative overflow-hidden mb-12 reveal">
+    <div class="absolute inset-0 pointer-events-none hire-border"></div>
+
+    <div class="flex items-center justify-between gap-4 mb-6 relative z-10">
+      <span class="eyebrow px-2.5 py-1 border border-accent-primary/30 text-accent-primary rounded-[var(--radius-chip)]">
+        {t.experience.badgeOpen}
+      </span>
+      <span class="data-label text-text-muted">{hire.period}</span>
+    </div>
+
+    <div class="relative z-10 md:grid md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 md:items-start">
+      <div>
+        <h3 class="type-card mb-3 text-[var(--text-primary)]">{hire.title}</h3>
+        <p class="text-text-muted leading-relaxed max-w-2xl">{hire.description}</p>
+      </div>
+
+      {/* Fixed width: the cycling types are absolutely positioned, so
+          an auto column would size to "Could be here" and clip the
+          longest type ("Part-Time Collaboration" / "Teilzeit-
+          Zusammenarbeit"). */}
+      <div class="mt-6 md:mt-0 md:w-[17rem] md:text-right">
+        <div class="relative h-7 md:h-6 overflow-hidden">
+          <div id="hire-cycle" class="font-mono text-sm text-accent-primary">
+            {t.experience.hireTypes.map((type, i) => (
+              <span class="hire-type" data-idx={i}>{type}</span>
+            ))}
+          </div>
+        </div>
+        <span class="inline-flex items-center gap-2 eyebrow text-accent-primary mt-4">
+          <span class="status-dot bg-accent-primary"></span>
+          {t.experience.couldBe}
+        </span>
+      </div>
+    </div>
+  </article>
+
+  {/* === The record === */}
+  <ol class="ledger reveal">
+    <li class="ledger-head" aria-hidden="true">
+      <span>{t.experience.colPeriod}</span>
+      <span>{t.experience.colRole}</span>
+      <span>{t.experience.colOrg}</span>
+      <span class="axis">
+        <i>{axisFrom}</i><i>{axisTo}</i>
+      </span>
+      <span class="ta-right">{t.experience.colType}</span>
+    </li>
+
+    {entries.map((entry) => (
+      <li class:list={["ledger-row", entry.current && "is-current"]}>
+        <span class="l-period data-label">
+          {entry.period}
+          {entry.current && (
+            <Fragment>
+              <span class="status-dot bg-accent-primary" aria-hidden="true"></span>
+              <span class="sr-only">{t.experience.current}</span>
+            </Fragment>
+          )}
+        </span>
+
+        <div class="l-role">
+          <h3 class="l-title">{entry.title}</h3>
+          <p class="l-note">{entry.description}</p>
+        </div>
+
+        <span class="l-org">
+          {entry.orgLink ? (
+            <a href={entry.orgLink} target="_blank" rel="noopener noreferrer">
+              {entry.org} <span aria-hidden="true">↗</span>
+            </a>
+          ) : entry.org}
+        </span>
+
+        <span class="l-track" aria-hidden="true">
+          <i class="l-bar" style={`left:${track(entry).left};width:${track(entry).width}`}></i>
+        </span>
+
+        <span class="l-type">
+          <span class="chip">
+            {entry.type === "work" ? t.experience.badgeWork : t.experience.badgeEducation}
+          </span>
+        </span>
+      </li>
+    ))}
+  </ol>
+</Sheet>
+
+<style>
+  /* ── Hire card: the one plate that advertises rather than records ── */
+  .hire-card {
+    box-shadow: 0 0 40px rgb(var(--accent-primary-rgb) / 0.14);
+  }
+  .hire-border {
+    background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary), var(--accent-tertiary), var(--accent-primary));
+    background-size: 300% 300%;
+    padding: 1px;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .hire-border { animation: shimmerBorder 6s ease infinite; }
+    @keyframes shimmerBorder {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+  }
+
+  /* Employment type cycling. The first type is visible from CSS alone,
+     so the card still names one without JS; the .js class the script
+     adds is what hands the stack over to the cycler. */
+  .hire-type {
+    position: absolute;
+    left: 0;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+  .hire-type[data-idx="0"],
+  .hire-type.active {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  #hire-cycle.js .hire-type[data-idx="0"]:not(.active) {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  @media (min-width: 768px) {
+    .hire-type { left: auto; right: 0; }
+  }
+
+  /* Status dot — a small square, in keeping with the squared language */
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .status-dot { animation: pulse 2s ease-in-out infinite; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.35; }
+    }
+  }
+
+  /* ── Ledger ───────────────────────────────────────────────
+     Stacked under 900px, ruled columns above it. The column head
+     is a visual affordance only: in the stacked view there are no
+     columns to head, and every cell still reads in order.       */
+  .ledger {
+    border-top: 1px solid var(--border-subtle);
+  }
+
+  .ledger-head,
+  .ledger-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.375rem 1.5rem;
+    padding: 1.25rem 0;
+    border-bottom: 1px solid var(--border-faint);
+  }
+
+  .ledger-head { display: none; }
+
+  .l-period {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+  }
+  .l-title {
+    font-size: 1.0625rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .l-note {
+    margin-top: 0.375rem;
+    color: var(--text-muted);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+  }
+  .l-org {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--accent-primary);
+  }
+  .l-org a { transition: opacity 0.2s; }
+  .l-org a:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  .chip {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-chip);
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem;
+    white-space: nowrap;
+  }
+  .is-current .chip {
+    border-color: color-mix(in srgb, var(--accent-primary) 35%, transparent);
+    color: var(--accent-primary);
+  }
+
+  /* The span track is a chart, and a chart of three bars is not worth
+     a phone's width — it is the one cell that does not stack. */
+  .l-track { display: none; }
+
+  @media (min-width: 900px) {
+    .ledger-head,
+    .ledger-row {
+      grid-template-columns: 8.25rem minmax(0, 1fr) 10rem 11rem 6.5rem;
+      align-items: baseline;
+      gap: 1.5rem;
+      padding: 1.375rem 0;
+    }
+    .ledger-head {
+      display: grid;
+      padding-bottom: 0.625rem;
+      border-bottom-color: var(--border-subtle);
+      font-family: var(--font-mono);
+      font-size: 0.6875rem;
+      font-weight: 500;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .ledger-row:hover {
+      background: var(--surface-plate);
+    }
+    .ta-right { text-align: right; }
+    .l-type { text-align: right; }
+
+    /* Axis ends, printed over the track column */
+    .axis {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.625rem;
+      letter-spacing: 0.1em;
+    }
+    .axis i { font-style: normal; }
+
+    /* Pinned to the row's first line rather than centred: a five-line
+       entry would otherwise float its bar halfway down the row, well
+       away from the dates it is plotting. */
+    .l-track {
+      display: block;
+      position: relative;
+      height: 3px;
+      background: var(--border-faint);
+      align-self: start;
+      margin-top: 0.5rem;
+    }
+    .l-bar {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: var(--text-muted);
+      opacity: 0.55;
+      transition: opacity 0.3s var(--ease-out-expo), background-color 0.3s var(--ease-out-expo);
+    }
+    .is-current .l-bar {
+      background: var(--accent-primary);
+      opacity: 1;
+    }
+    .ledger-row:hover .l-bar {
+      opacity: 1;
+    }
+  }
+</style>
+
+<script>
+  import { onPageLoad, prefersReducedMotion } from "../../scripts/lifecycle";
+
+  onPageLoad((scope) => {
+    /* Employment type cycling on the hire card. */
+    const cycle = document.getElementById("hire-cycle");
+    const types = document.querySelectorAll(".hire-type");
+    if (!cycle || !types.length) return;
+
+    cycle.classList.add("js"); // CSS stops pinning the first type open
+    let typeIdx = 0;
+    const cycleType = () => {
+      types.forEach((t) => t.classList.remove("active"));
+      types[typeIdx]?.classList.add("active");
+      typeIdx = (typeIdx + 1) % types.length;
+    };
+
+    cycleType(); // show the first immediately
+    if (!prefersReducedMotion()) scope.interval(cycleType, 2500);
+  });
+</script>

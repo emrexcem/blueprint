@@ -1,0 +1,554 @@
+---
+/*  BlogPostPage.astro
+    Renders one blog post, shared by every language.
+
+    Post bodies are English documents and are not translated — only
+    the furniture around them is: the back links, reading time,
+    contents rail and the prev/next pair. The comment thread is
+    keyed to the English path so both language versions of a post
+    talk in the same place rather than splitting in two.          */
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Navbar from "../astro/Navbar.astro";
+import Footer from "../astro/Footer.astro";
+import { comments, commentsEnabled, site } from "../../config";
+import { getPublishedPosts, type Post } from "../../lib/posts";
+import { format, getLang, localizePath, stripLang, useTranslations, withBase } from "../../i18n";
+
+interface Props {
+  post: Post;
+}
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const { post } = Astro.props;
+const { Content, headings, remarkPluginFrontmatter } = await post.render();
+
+const readingTime = remarkPluginFrontmatter.readingTime;
+
+/* Only h2/h3 make the contents list — deeper levels are detail */
+const toc = headings.filter((h) => h.depth === 2 || h.depth === 3);
+
+/* Prev / Next posts (non-draft, sorted by date) */
+const allPosts = await getPublishedPosts();
+
+const currentIdx = allPosts.findIndex((p) => p.slug === post.slug);
+const prevPost = currentIdx < allPosts.length - 1 ? allPosts[currentIdx + 1] : null;
+const nextPost = currentIdx > 0 ? allPosts[currentIdx - 1] : null;
+
+const blogHref = localizePath("/blog", lang);
+const ogImage = new URL(withBase(`/og/${post.slug}.png`), Astro.site).href;
+
+/* One discussion per post, not per language: the term is the
+   English path, which is also what giscus's pathname mapping used
+   before the German routes existed. */
+const commentTerm = stripLang(Astro.url.pathname);
+---
+
+<BaseLayout
+  title={`${post.data.title} — ${site.author}`}
+  description={post.data.description}
+  ogImage={ogImage}
+  ogType="article"
+>
+  <Navbar />
+
+  <!-- Reading progress: native scroll-timeline where supported, else absent -->
+  <div class="read-progress" aria-hidden="true"></div>
+
+  <main class="pt-24 pb-32 px-6">
+    <div class="max-w-6xl mx-auto lg:grid lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-16">
+      <article class="max-w-3xl w-full">
+
+        <!-- Back link -->
+        <a
+          href={blogHref}
+          class="inline-flex items-center gap-1 font-mono text-sm text-text-muted hover:text-accent-primary transition-colors mb-8"
+        >
+          <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+          {t.post.allPosts}
+        </a>
+
+        <!-- Header. The loose date/reading-time row is now the post's
+             title block, so a post opens the same way a sheet does. -->
+        <header class="mb-12">
+          <div class="sheet-tb mb-8">
+            <span class="sheet-tb-cell sheet-tb-index">{t.writing.label}</span>
+            <span class="sheet-tb-cell">
+              <time datetime={post.data.date.toISOString()}>
+                {post.data.date.toLocaleDateString(t.dateLocale, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </time>
+            </span>
+            <span class="sheet-tb-cell sheet-tb-fill">
+              {format(t.post.readingTime, { n: readingTime })}
+            </span>
+          </div>
+
+          <h1
+            class="type-section mb-5 text-[var(--text-primary)]"
+            transition:name={`post-title-${post.slug}`}
+          >
+            {post.data.title}
+          </h1>
+
+          <p class="text-text-muted text-lg leading-relaxed">
+            {post.data.description}
+          </p>
+
+          <div class="flex flex-wrap gap-2 mt-5">
+            {post.data.tags.map((tag: string) => (
+              <a
+                href={`${blogHref}?tag=${encodeURIComponent(tag)}`}
+                class="post-tag eyebrow px-2 py-1 border border-subtle text-accent-primary hover:border-accent-primary/40 transition-colors"
+              >
+                {tag}
+              </a>
+            ))}
+          </div>
+        </header>
+
+        <hr class="hairline mb-12" />
+
+        <!-- MDX / Markdown content -->
+        <div class="blog-prose">
+          <Content />
+        </div>
+
+      <!-- Post footer nav -->
+      <div class="mt-16 pt-8 border-t border-faint">
+        <div class="flex flex-col sm:flex-row justify-between gap-6">
+          {prevPost ? (
+            <a
+              href={localizePath(`/blog/${prevPost.slug}`, lang)}
+              class="group flex-1"
+             
+            >
+              <span class="font-mono text-[10px] tracking-widest text-text-muted uppercase block mb-1">{t.post.older}</span>
+              <span class="font-mono text-sm text-text-muted group-hover:text-accent-primary transition-colors line-clamp-2">
+                {prevPost.data.title}
+              </span>
+            </a>
+          ) : <div class="flex-1"></div>}
+
+          {nextPost ? (
+            <a
+              href={localizePath(`/blog/${nextPost.slug}`, lang)}
+              class="group flex-1 text-right"
+             
+            >
+              <span class="font-mono text-[10px] tracking-widest text-text-muted uppercase block mb-1">{t.post.newer}</span>
+              <span class="font-mono text-sm text-text-muted group-hover:text-accent-primary transition-colors line-clamp-2">
+                {nextPost.data.title}
+              </span>
+            </a>
+          ) : <div class="flex-1"></div>}
+        </div>
+
+        <div class="text-center mt-10">
+          <a
+            href={blogHref}
+            class="font-mono text-sm text-text-muted hover:text-accent-primary transition-colors"
+          >
+            ← {t.post.allPosts}
+          </a>
+        </div>
+        </div>
+
+        <!-- Comments: loaded only once the reader reaches them.
+             Absent entirely until `comments` in src/config.ts is filled in. -->
+        {commentsEnabled && (
+          <section class="mt-16 pt-8 border-t border-faint" aria-label="Comments">
+            <p class="eyebrow text-text-muted mb-6">{t.post.comments}</p>
+            <div
+              id="giscus-slot"
+              data-giscus
+              data-repo={comments.repo}
+              data-repo-id={comments.repoId}
+              data-category={comments.category}
+              data-category-id={comments.categoryId}
+              data-term={commentTerm}
+              data-lang={t.post.giscusLang}
+            ></div>
+          </section>
+        )}
+      </article>
+
+      <!-- Contents rail -->
+      {toc.length > 1 && (
+        <aside class="hidden lg:block">
+          <nav class="sticky top-28" aria-labelledby="toc-heading">
+            <p id="toc-heading" class="eyebrow text-text-muted mb-4">{t.post.contents}</p>
+            <ul class="toc space-y-1 border-l border-faint">
+              {toc.map((h) => (
+                <li>
+                  <a
+                    href={`#${h.slug}`}
+                    data-toc-link={h.slug}
+                    class:list={["block py-1.5 text-sm text-text-muted hover:text-[var(--text-primary)] transition-colors",
+                                 h.depth === 3 ? "pl-8" : "pl-4"]}
+                  >
+                    {h.text}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </aside>
+      )}
+    </div>
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  /*  ── Blog Prose ───────────────────────────────────────────
+      Custom prose styles that match the portfolio's design
+      system. Uses CSS variables so it works in both themes.
+      No dependency on @tailwindcss/typography prose classes.
+      ───────────────────────────────────────────────────────── */
+
+  .blog-prose {
+    color: var(--text-muted);
+    font-size: 1rem;
+    line-height: 1.7;
+    max-width: 65ch;
+  }
+
+  /* ── Headings ──────────────────────────────── */
+  .blog-prose :global(h1),
+  .blog-prose :global(h2),
+  .blog-prose :global(h3),
+  .blog-prose :global(h4) {
+    color: var(--text-primary);
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    margin-top: 2.5em;
+    margin-bottom: 0.8em;
+  }
+  .blog-prose :global(h1) { font-size: 2rem;     line-height: 1.1; }
+  .blog-prose :global(h2) { font-size: 1.625rem; line-height: 1.15; }
+  .blog-prose :global(h3) { font-size: 1.25rem;  line-height: 1.25; }
+  /* Deepest level drops to the data face — it reads as a label */
+  .blog-prose :global(h4) {
+    font-family: var(--font-mono);
+    font-size: 0.9375rem;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+  }
+
+  /* First heading after the top of the article — remove double spacing */
+  .blog-prose > :global(:first-child) {
+    margin-top: 0;
+  }
+
+  /* ── Paragraphs ────────────────────────────── */
+  .blog-prose :global(p) {
+    margin-bottom: 1.5em;
+  }
+
+  /* ── Links ─────────────────────────────────── */
+  .blog-prose :global(a) {
+    color: var(--accent-primary);
+    text-decoration: none;
+    transition: opacity 0.2s;
+    overflow-wrap: break-word;
+  }
+  .blog-prose :global(a:hover) {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* ── Bold / Strong ─────────────────────────── */
+  .blog-prose :global(strong) {
+    color: var(--text-primary);
+    font-weight: 700;
+  }
+
+  /* ── Inline code ─────────────────────────────
+     Breaking mid-token is required, not cosmetic: one unbroken
+     `file_get_contents('http://evil.com/payload')` is wider than a
+     phone, and an inline element cannot scroll, so without this the
+     whole page scrolls sideways. Same for bare URLs in prose. */
+  .blog-prose :global(code) {
+    font-family: var(--font-mono);
+    font-size: 0.9375em;
+    color: var(--accent-primary);
+    background: rgb(var(--accent-primary-rgb) / 0.08);
+    border: 1px solid rgb(var(--accent-primary-rgb) / 0.12);
+    padding: 0.15em 0.4em;
+    border-radius: var(--radius-plate);
+    overflow-wrap: break-word;
+  }
+
+  /* ── Code blocks ─────────────────────────────
+     Owned by expressive-code (frames, copy button,
+     highlighting). Only the outer spacing is ours. */
+  .blog-prose :global(.expressive-code) {
+    margin: 1.75em 0;
+  }
+  /* Inline code keeps its own treatment; block code must not
+     inherit it, or every token gets a terracotta chip. */
+  .blog-prose :global(.expressive-code code) {
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+  }
+
+  /* ── Blockquotes ───────────────────────────── */
+  .blog-prose :global(blockquote) {
+    border-left: 3px solid var(--accent-primary);
+    padding: 0.75em 1.25em;
+    margin: 1.75em 0;
+    background: rgb(var(--accent-primary-rgb) / 0.04);
+    border-radius: 0 2px 2px 0;
+  }
+  .blog-prose :global(blockquote p) {
+    margin-bottom: 0;
+    font-style: italic;
+    color: var(--text-muted);
+  }
+
+  /* ── Lists ─────────────────────────────────── */
+  .blog-prose :global(ul),
+  .blog-prose :global(ol) {
+    padding-left: 1.5em;
+    margin-bottom: 1.5em;
+  }
+  .blog-prose :global(li) {
+    margin-bottom: 0.5em;
+  }
+  .blog-prose :global(ul) { list-style-type: disc; }
+  .blog-prose :global(ol) { list-style-type: decimal; }
+
+  /* ── Tables ────────────────────────────────── */
+  .blog-prose :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.75em 0;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+  .blog-prose :global(th) {
+    font-weight: 500;
+    color: var(--text-primary);
+    text-align: left;
+    padding: 0.75em 1em;
+    border-bottom: 2px solid var(--border-subtle);
+  }
+  .blog-prose :global(td) {
+    padding: 0.6em 1em;
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .blog-prose :global(tr:last-child td) {
+    border-bottom: none;
+  }
+
+  /* ── Horizontal rules ──────────────────────── */
+  .blog-prose :global(hr) {
+    border: none;
+    height: 1px;
+    background: linear-gradient(to right, transparent, var(--accent-primary), transparent);
+    opacity: 0.2;
+    margin: 3em 0;
+  }
+
+  /* ── Images ────────────────────────────────── */
+  .blog-prose :global(img) {
+    border-radius: var(--radius-plate);
+    margin: 2em auto;
+    max-width: 100%;
+    border: 1px solid var(--border-subtle);
+  }
+
+  /* ── Figure captions ─────────────────────────
+     An italic line written straight under an image, with no blank line
+     between them, stays in the same paragraph — that is the caption
+     convention here. It reads as a drawing annotation (mono, muted,
+     tied to the plate by a left rule) rather than as an emphasised
+     sentence of body prose. */
+  .blog-prose :global(p:has(> em) > img) {
+    margin-bottom: 0;
+  }
+  .blog-prose :global(p:has(> img) > em) {
+    display: block;
+    margin-top: 0.9em;
+    padding-left: 0.875rem;
+    border-left: 1px solid var(--border-subtle);
+    font-family: var(--font-mono);
+    font-style: normal;
+    font-size: 0.8125rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+  }
+
+  /* ── Scrollbar inside code blocks ──────────── */
+  .blog-prose :global(pre)::-webkit-scrollbar {
+    height: 4px;
+  }
+  .blog-prose :global(pre)::-webkit-scrollbar-thumb {
+    background: var(--accent-primary);
+    border-radius: var(--radius-plate);
+  }
+  .blog-prose :global(pre)::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  /* ── Light theme adjustments ───────────────── */
+  :global(.light) .blog-prose :global(pre) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  :global(.light) .blog-prose :global(code) {
+    background: rgb(var(--accent-primary-rgb) / 0.07);
+    border-color: rgb(var(--accent-primary-rgb) / 0.18);
+  }
+
+  /* ── Tag pills in post header ──────────────── */
+  .post-tag {
+    border-radius: 1px;
+    text-decoration: none;
+  }
+</style>
+
+<style>
+  /* ── Reading progress ────────────────────────────
+     Native scroll-driven animation; browsers without
+     scroll-timeline simply never show the bar.        */
+  .read-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 2px;
+    width: 100%;
+    background: var(--accent-primary);
+    transform-origin: 0 50%;
+    transform: scaleX(0);
+    z-index: 60;
+  }
+  @supports (animation-timeline: scroll()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .read-progress {
+        animation: readProgress linear;
+        animation-timeline: scroll(root block);
+      }
+      @keyframes readProgress {
+        from { transform: scaleX(0); }
+        to   { transform: scaleX(1); }
+      }
+    }
+  }
+
+  /* ── Contents rail ──────────────────────────────── */
+  .toc a {
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+  }
+  .toc a[aria-current="true"] {
+    color: var(--accent-primary);
+    border-left-color: var(--accent-primary);
+  }
+</style>
+
+<script>
+  import { onPageLoad } from "../../scripts/lifecycle";
+
+  onPageLoad((scope) => {
+    /* ── Contents scroll-spy ──────────────────────────
+       Marks the heading currently nearest the top of the
+       viewport, so the rail tracks where the reader is. */
+    const links = document.querySelectorAll<HTMLAnchorElement>("[data-toc-link]");
+    if (links.length) {
+      const headings = [...links]
+        .map((link) => document.getElementById(link.dataset.tocLink!))
+        .filter((el): el is HTMLElement => !!el);
+
+      const setCurrent = (slug: string | null) =>
+        links.forEach((link) =>
+          link.setAttribute("aria-current", String(link.dataset.tocLink === slug))
+        );
+
+      const spy = new IntersectionObserver(
+        () => {
+          // Whichever heading sits closest above the reading line wins
+          const line = 120;
+          let active: HTMLElement | null = null;
+          for (const h of headings) {
+            if (h.getBoundingClientRect().top <= line) active = h;
+          }
+          setCurrent(active?.id ?? headings[0]?.id ?? null);
+        },
+        { rootMargin: "0px 0px -80% 0px", threshold: [0, 1] }
+      );
+      headings.forEach((h) => spy.observe(h));
+      scope.observe(spy);
+    }
+
+    /* ── Comments, loaded on approach ─────────────────
+       giscus is a third-party embed, so it stays out of
+       the page until the reader is nearly at it.        */
+    const slot = document.querySelector<HTMLElement>("[data-giscus]");
+    if (!slot || slot.dataset.loaded) return;
+
+    const mountGiscus = () => {
+      if (slot.dataset.loaded) return;
+      slot.dataset.loaded = "true";
+      const isLight = document.documentElement.classList.contains("light");
+      const script = document.createElement("script");
+      script.src = "https://giscus.app/client.js";
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      Object.entries({
+        "data-repo": slot.dataset.repo!,
+        "data-repo-id": slot.dataset.repoId!,
+        "data-category": slot.dataset.category!,
+        "data-category-id": slot.dataset.categoryId!,
+        "data-mapping": "specific",
+        "data-term": slot.dataset.term!,
+        "data-strict": "1",
+        "data-reactions-enabled": "1",
+        "data-emit-metadata": "0",
+        "data-input-position": "top",
+        "data-theme": isLight ? "light" : "dark",
+        "data-lang": slot.dataset.lang || "en",
+        "data-loading": "lazy",
+      }).forEach(([k, v]) => script.setAttribute(k, v));
+      slot.appendChild(script);
+    };
+
+    const approach = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) {
+          mountGiscus();
+          approach.disconnect();
+        }
+      },
+      { rootMargin: "600px" }
+    );
+    approach.observe(slot);
+    scope.observe(approach);
+
+    // Keep the embed's theme in step with the site toggle
+    const syncTheme = () => {
+      const frame = document.querySelector<HTMLIFrameElement>("iframe.giscus-frame");
+      if (!frame?.contentWindow) return;
+      const theme = document.documentElement.classList.contains("light") ? "light" : "dark";
+      frame.contentWindow.postMessage(
+        { giscus: { setConfig: { theme } } },
+        "https://giscus.app"
+      );
+    };
+    const themeWatcher = new MutationObserver(syncTheme);
+    themeWatcher.observe(document.documentElement, { attributeFilter: ["class"] });
+    scope.observe(themeWatcher);
+  });
+</script>

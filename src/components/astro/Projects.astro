@@ -1,0 +1,40 @@
+---
+/*  Projects.astro
+    Wraps the React ProjectsGrid island.
+    Uses client:visible so JS only loads when scrolled into view.
+
+    The island cannot read Astro.url, so the localised card copy is
+    passed in as a prop. Only the language being rendered crosses the
+    boundary — the other one never reaches the browser.          */
+
+import ProjectsGridAdapter from "../react/ProjectsGridAdapter";
+import Sheet from "./Sheet.astro";
+import { projects } from "../../config";
+import { getLang, pick, useTranslations } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const items = projects.map((project) => {
+  const text = pick(project, lang);
+  return { title: text.title, description: text.description, tech: project.tech, link: project.link };
+});
+---
+
+{/* Not `boxed`: the grid is already four plates, and a plate is never
+    drawn inside a plate — the title block alone carries the sheet. */}
+<Sheet
+  id="projects"
+  index={3}
+  label={t.projects.label}
+  title={t.projects.title}
+  description={t.projects.description}
+>
+  <!-- React island — hydrated a screenful early, so the cards are
+       mounted and holding their entrance before they can be seen -->
+  <ProjectsGridAdapter
+    client:visible={{ rootMargin: "600px" }}
+    items={items}
+    viewLabel={t.projects.view}
+  />
+</Sheet>

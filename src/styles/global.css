@@ -1,0 +1,718 @@
+@import "tailwindcss";
+@config "../../tailwind.config.mjs";
+
+/* ============================================================
+   FONTS — self-hosted Geist and Geist Mono (SIL OFL 1.1),
+   see public/fonts/README.md
+   ============================================================ */
+@import "./fonts.css";
+
+/* ============================================================
+   CSS CUSTOM PROPERTIES
+   ============================================================ */
+:root {
+  /* Tells the browser which way its own furniture goes — scrollbars,
+     form controls, the canvas behind the page. Overridden in .light. */
+  color-scheme: dark;
+
+  /* Palette — "Blueprint": the ink of a drafting print, so the accent
+     agrees with the design system rather than sitting on top of it.
+     The brass third keeps the set from reading clinical.
+
+     Every accent is also published as a bare `r g b` triplet, because
+     the tints scattered through the site (grid lines, card glows, code
+     chips) need `rgb(var(--x-rgb) / a)`. Change a hex here and its
+     triplet in the same edit — nothing else hardcodes these. */
+  --bg-dark: #0d0d0d;
+  --border-subtle: rgba(255, 255, 255, 0.10);
+  --border-faint: rgba(255, 255, 255, 0.05);
+  --dot-inactive-bg: rgba(255, 255, 255, 0.15);
+  --bg-light: #f5f3f0;
+  --accent-primary: #4FB3D9;   /* cyan   — 8.13:1 on #0d0d0d */
+  --accent-secondary: #7C8FF0; /* indigo — 6.52:1 */
+  --accent-tertiary: #C9A227;  /* brass  — 8.03:1 */
+  --accent-primary-rgb: 79 179 217;
+  --accent-secondary-rgb: 124 143 240;
+  --accent-tertiary-rgb: 201 162 39;
+  /* The focus mark is drawn in the print's own ink — see FOCUS below.
+     It is declared once and not again in .light because :root *is*
+     <html>: the .light accent override lands on the same element, so
+     the substitution picks it up. */
+  --focus-ring: var(--accent-primary);
+  --text-primary: #e8e8e8;
+  /* The middle rung. Muted is the site's dimmest ink and reads as an
+     aside; anything on a conversion path (the contact rows) wants to
+     sit below the headline without being an aside. Placed at the
+     perceptual midpoint of primary and muted, not between their hex
+     values — 8.96:1 on #0d0d0d, 8.49:1 on the plate. */
+  --text-secondary: #b0b0b0;
+  --text-muted: #888888;
+  --text-on-accent: #0d0d0d;   /* label text on accent-filled pills/buttons */
+
+  /* SkillTree */
+  --skill-label: #8A8A8A;      /* 4.77:1 on the pill fill (text ≥4.5:1) */
+  --skill-label-dead: #444444; /* ghosted post-snap state, user-reversible */
+  --pill-stroke: rgba(255, 255, 255, 0.34); /* eff. 3.12:1 (UI ≥3:1) */
+  /* Far end of the rope's strain ramp. Overload is red in every
+     palette — it is a warning, not a brand colour — so this is the one
+     accent-adjacent ink the palette blocks below leave alone. The
+     near end of the ramp is --accent-primary. */
+  --stress-max: #FF3333;
+  --glow-primary: rgb(var(--accent-primary-rgb) / 0.35);
+  --glow-secondary: rgb(var(--accent-secondary-rgb) / 0.30);
+  --glow-tertiary: rgb(var(--accent-tertiary-rgb) / 0.30);
+
+  /* About "learning" badge. This was declared in .light only, so dark
+     fell through to the 0.65 written as a fallback in About.astro and
+     shipped the row at 2.89:1 — a real AA failure, not a near miss.
+     The two modes cannot spend the same dim: muted on the plate opens
+     at 5.20:1 in dark and 11.37:1 in light, so light can drop a whole
+     stop and dark has almost nothing to give. 0.93 is the most dark
+     can pay and still clear 4.5:1 (painted 4.60:1; 0.90 already lands
+     at 4.41:1). The dim is nearly invisible at that value, and
+     that is honest — in dark the row is told apart by the name's
+     colour, muted against the fluent rows' accent, not by this. */
+  --learning-opacity: 0.93;
+
+  /* Drafting-sheet surfaces */
+  --surface-plate: rgba(255, 255, 255, 0.03);
+  --surface-plate-hover: rgba(255, 255, 255, 0.055);
+  /* The table the sheet lies on — used to lift one section out of the
+     run. Deliberately one step only; see .band-tint. Split into ink and
+     alpha because the two modes tint in opposite directions and the
+     `plain` ground preset has to reach the alpha alone. */
+  --band-ink: 255 255 255;
+  --band-alpha: 0.016;
+  --surface-band: rgb(var(--band-ink) / var(--band-alpha));
+  --radius-plate: 2px;
+  --radius-chip: 1px;
+  --notch: 14px;
+
+  /* The ruled paper behind the hero. Size and alpha are tokens so the
+     `ground` presets can thin it out or drop it without .blueprint-grid
+     needing to know they exist. */
+  --grid-size: 40px;
+  --grid-alpha: 0.07;
+
+  /* Weight and density of the drawn rules: section hairlines, the
+     title block's borders, its cell padding. */
+  --rule-w: 1px;
+  --tb-pad-y: 0.6875rem;
+  --tb-pad-x: 1.125rem;
+
+  /* Multiplier on the paper grain, set from src/config.ts's `values`
+     export as an inline style on <html>. Declared here so the utility
+     has a value with JS off and in any context that does not run the
+     layout. */
+  --noise-opacity: 1;
+  /* The fixed bar's own height: the h-16 row plus the 1px rule under
+     it. Published so nothing has to re-measure the navbar to clear
+     it — scroll-padding-top below is the first consumer. */
+  --nav-h: 65px;
+  /* The same contract at the other end of the viewport, for the demo's
+     variation strip. Zero unless that strip is built, which is what
+     lets the clearance rules below stay unconditional: a fork gets
+     them and they cost it nothing. */
+  --strip-h: 0px;
+
+  /* Type stacks. The two faces are named in exactly two places: the
+     @font-face blocks in fonts.css, and here. Everything else — every
+     component <style> block, the Tailwind sans/mono aliases,
+     expressive-code, the SkillTree's SVG labels — points at these, so a
+     font swap is one edit per family and cannot leave a stale stack
+     behind in some component nobody re-greps. */
+  --font-display: "Geist", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+
+  /* Transitions */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Slight overshoot, standing in for a ζ≈0.7 spring */
+  --ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+/* Light mode overrides */
+.light {
+  color-scheme: light;
+
+  --bg-dark: #f5f3f0;
+  --text-primary: #0a0a0a;
+  --text-secondary: #222222;   /* 14.37:1 on the page, 15.91:1 on a plate */
+  --text-muted: #3a3a3a;
+  --border-subtle: rgba(0, 0, 0, 0.12);
+  --border-faint: rgba(0, 0, 0, 0.07);
+  --dot-inactive-bg: rgba(0, 0, 0, 0.15);
+
+  /* Darkened accents for WCAG AA on #f5f3f0 (≥4.5:1 contrast) */
+  --accent-primary: #0E6E8C;   /* deep teal — 5.23:1 */
+  --accent-secondary: #3B4FB5; /* indigo    — 6.38:1 */
+  --accent-tertiary: #7D601C;  /* brass     — 5.32:1 */
+  --accent-primary-rgb: 14 110 140;
+  --accent-secondary-rgb: 59 79 181;
+  --accent-tertiary-rgb: 125 96 28;
+  --text-on-accent: #ffffff;   /* ≥5.8:1 on all light accents */
+  --skill-label: #555555;      /* 6.73:1, keeps muted feel */
+  --skill-label-dead: #9a9a9a; /* ghost state, parity with dark */
+  --pill-stroke: rgba(0, 0, 0, 0.45);  /* eff. 3.28:1 (UI ≥3:1) */
+  --stress-max: #C1121F;       /* overload red, darkened for paper */
+  --glow-primary: rgb(var(--accent-primary-rgb) / 0.25);
+  --glow-secondary: rgb(var(--accent-secondary-rgb) / 0.22);
+  --glow-tertiary: rgb(var(--accent-tertiary-rgb) / 0.22);
+  --learning-opacity: 0.85;    /* About "learning" badge, eff. ≈6.6:1 */
+  --surface-plate: #ffffff;
+  /* Hover used to be #ffffff too, i.e. no hover at all. White is the
+     top of the range, so a light sheet cannot get brighter to signal
+     the pointer — the only move left is a hair of the blueprint ink
+     showing in the paper. Kept cool and kept shallow: 1.05:1 off the
+     plate, which is visible as a whole-card shift, and still 1.05:1
+     clear of the #f5f3f0 page so the card does not sink into the
+     table on the way. */
+  --surface-plate-hover: #f6fafc;
+  /* Light mode inverts the relationship: the sheets are white paper,
+     so the band has to go *darker* than the page to read as the table
+     underneath rather than as another sheet. */
+  --band-ink: 0 0 0;
+  --band-alpha: 0.03;
+  /* Ink on paper takes a touch more than ink on a lit screen before
+     the ruling reads at all. */
+  --grid-alpha: 0.09;
+}
+
+/* ============================================================
+   VARIATIONS
+
+   Five axes, selected by a data-* attribute on <html>. Every block
+   below is a set of token overrides and nothing else: no component
+   anywhere reads these attributes, so a variation cannot leak out of
+   the cascade and into someone's markup. The two exceptions are
+   marked where they occur, and both are still stylesheet rules.
+
+   The base value of an axis has no block here — it is what :root and
+   .light already say — so `data-palette="blueprint"` matches nothing
+   and correctly falls through. That is why the strip can set any
+   value without a special case for going home.
+
+   Both mode variants of a palette are always written, and both are
+   keyed on .dark/.light rather than left to :root, so the two carry
+   equal specificity and neither depends on the order of this file.
+
+   Pick the shipped defaults in src/config.ts's `theme` export. The three inks
+   keep the same three jobs in every palette — primary is the one that
+   means "you can act on this" — and every colour below clears WCAG AA
+   against the page, a plate and the tinted band in its own mode, with
+   the ratio measured on painted pixels beside it. --text-on-accent is
+   not restated: #0d0d0d clears 4.5:1 on all six dark inks and #ffffff
+   on all six light ones, so the base pair holds throughout.
+   ============================================================ */
+
+/* Redline — the markup pass, when a print comes back covered in
+   corrections. Vermilion leads, amber carries the second voice, and
+   the one cool ink is demoted to third so the sheet reads as annotated
+   rather than as an error state. */
+.dark[data-palette="redline"] {
+  --accent-primary: #FF7A66;   /* vermilion — 7.61:1 on #0d0d0d */
+  --accent-secondary: #E8A33D; /* amber     — 9.01:1 */
+  --accent-tertiary: #8FB4D9;  /* pale blue — 8.98:1 */
+  --accent-primary-rgb: 255 122 102;
+  --accent-secondary-rgb: 232 163 61;
+  --accent-tertiary-rgb: 143 180 217;
+}
+.light[data-palette="redline"] {
+  --accent-primary: #B3301C;   /* 5.65:1 on #f5f3f0, 6.26:1 on white */
+  --accent-secondary: #7D5410; /* 6.02:1 */
+  --accent-tertiary: #2F5F80;  /* 6.18:1 */
+  --accent-primary-rgb: 179 48 28;
+  --accent-secondary-rgb: 125 84 16;
+  --accent-tertiary-rgb: 47 95 128;
+}
+
+/* Verdigris — copper left out in the weather. Green leads, a muted
+   violet holds the middle far enough from it to stay legible as a
+   separate voice, and the third ink is the raw metal underneath. */
+.dark[data-palette="verdigris"] {
+  --accent-primary: #4FD1A5;   /* patina — 10.18:1 on #0d0d0d */
+  --accent-secondary: #A79BC4; /* violet —  7.52:1 */
+  --accent-tertiary: #D98A4F;  /* copper —  7.13:1 */
+  --accent-primary-rgb: 79 209 165;
+  --accent-secondary-rgb: 167 155 196;
+  --accent-tertiary-rgb: 217 138 79;
+}
+.light[data-palette="verdigris"] {
+  --accent-primary: #0F6E52;   /* 5.62:1 on #f5f3f0, 6.23:1 on white */
+  --accent-secondary: #5B4C87; /* 6.70:1 */
+  --accent-tertiary: #8A4A16;  /* 6.17:1 */
+  --accent-primary-rgb: 15 110 82;
+  --accent-secondary-rgb: 91 76 135;
+  --accent-tertiary-rgb: 138 74 22;
+}
+
+/* Graphite — pencil rather than print. The quietest set the system
+   will take, and the one that proves the structure is carrying the
+   design: primary still has enough chroma to read as clickable
+   against body text, which is the floor a near-neutral palette has to
+   respect. Drop below it and every link looks like prose. */
+.dark[data-palette="graphite"] {
+  --accent-primary: #9FB6C9;   /* steel  — 9.26:1 on #0d0d0d */
+  --accent-secondary: #B9AC98; /* pewter — 8.72:1 */
+  --accent-tertiary: #C98A6A;  /* rust   — 6.78:1 */
+  --accent-primary-rgb: 159 182 201;
+  --accent-secondary-rgb: 185 172 152;
+  --accent-tertiary-rgb: 201 138 106;
+}
+.light[data-palette="graphite"] {
+  --accent-primary: #3C596E;   /* 6.66:1 on #f5f3f0, 7.38:1 on white */
+  --accent-secondary: #5C5142; /* 6.99:1 */
+  --accent-tertiary: #8A4A2A;  /* 6.13:1 */
+  --accent-primary-rgb: 60 89 110;
+  --accent-secondary-rgb: 92 81 66;
+  --accent-tertiary-rgb: 138 74 42;
+}
+
+/* ── Corner treatment ─────────────────────────────────────── */
+[data-corner="square"] {
+  --notch: 0px;
+  --radius-plate: 0px;
+  --radius-chip: 0px;
+}
+[data-corner="soft"] {
+  --notch: 0px;
+  --radius-plate: 8px;
+  --radius-chip: 4px;
+}
+/* First exception to "tokens only": the notch is a clip-path, and a
+   clip-path with a zero-width notch is still a clip — it squares off
+   the radius underneath it and it keeps eating the focus outline. Both
+   presets that give up the notch have to give up the clip with it. */
+[data-corner="square"] .plate-notch,
+[data-corner="soft"] .plate-notch {
+  clip-path: none;
+}
+
+/* ── Ground: the ruled paper, and the tint under the one lifted
+      band. Both are the sheet lying on a table rather than floating,
+      so they move together and `plain` takes away both. ────────── */
+.dark[data-grid="coarse"] {
+  --grid-size: 80px;
+  --grid-alpha: 0.09;
+}
+.light[data-grid="coarse"] {
+  --grid-size: 80px;
+  --grid-alpha: 0.12;
+}
+[data-grid="plain"] {
+  --grid-alpha: 0;
+  --band-alpha: 0;
+}
+
+/* ── Rule weight ──────────────────────────────────────────── */
+[data-rule="bold"] {
+  --rule-w: 2px;
+  --tb-pad-y: 0.9375rem;
+  --tb-pad-x: 1.375rem;
+}
+
+/* ── Motion ───────────────────────────────────────────────────
+   The JS side of this attribute is one predicate — prefersReducedMotion
+   in scripts/lifecycle.ts — which every entrance, the physics and the
+   islands already consult, so `reduced` takes the same path a visitor
+   with the OS setting takes. What that predicate cannot reach is the
+   CSS-only ambience (the hero's pulse and tick, the skill sway), each
+   gated on the media query at its own call site. One rule collects
+   them rather than annotating every one.
+
+   Second exception to "tokens only", and the reason is that there is
+   nothing to tokenise: the values being suppressed are written into
+   keyframes and transitions, not read from variables.
+
+   Note the asymmetry, which is deliberate: `reduced` can take motion
+   away from someone who did not ask for it, but `full` cannot give it
+   back to someone who did — a media query is not overridable from
+   markup, and it should not be. */
+[data-motion="reduced"] *,
+[data-motion="reduced"] *::before,
+[data-motion="reduced"] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+[data-motion="reduced"] {
+  scroll-behavior: auto !important;
+}
+
+/* ============================================================
+   BASE
+   ============================================================ */
+html {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  /* The shipped set carries no upright 600 (SemiBold is italic-only, see
+     fonts.css) — never let the browser fake one. Use 500 or 700. */
+  font-synthesis: none;
+  /* The navbar is fixed, so without this an anchor jump parks its
+     target's first line underneath the bar and a keyboard user lands
+     on a heading they cannot see (WCAG 2.4.11). The gutter on top of
+     the bar's own height is the section's air, not slack: it puts the
+     title block a rule's width clear of the bar instead of tight
+     against it. */
+  scroll-padding-top: calc(var(--nav-h) + 1.5rem);
+  /* Its counterpart: an anchor near the end of the page would
+     otherwise land under the fixed strip. */
+  scroll-padding-bottom: var(--strip-h);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+
+body {
+  font-family: var(--font-display);
+  overflow-x: hidden;
+  /* The variation strip is fixed, so the page has to end above it
+     rather than behind it — stated once here instead of the footer
+     having to know the strip exists. */
+  padding-bottom: var(--strip-h);
+}
+
+/* ============================================================
+   TYPE ROLES — display (--font-display), data (--font-mono)
+   ============================================================ */
+.type-hero {
+  font-size: clamp(3rem, 9vw, 6.5rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+.type-section {
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+.type-card {
+  font-size: 1.375rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.data-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
+
+::selection {
+  background: var(--accent-primary);
+  color: var(--bg-dark);
+}
+
+/* ============================================================
+   SCROLLBAR (Webkit)
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 3px;
+}
+
+/* ============================================================
+   FOCUS — the registration mark
+
+   A drawing registers a sheet with a ruled square set off from the
+   thing it aligns, which is what a focus ring already is; drawing it
+   in the print's ink makes it part of the vocabulary rather than a
+   browser default sitting on top of it. Before this the tree defined
+   no focus style at all, so keyboard focus was invisible everywhere.
+
+   The offset is load-bearing, not decoration. It leaves a gap of the
+   surface between the element and the mark, so 1.4.11 only asks the
+   mark to clear 3:1 against that surface — which is why one ink
+   works on the cyan logo, on a filled pill and on plain body text
+   alike. accent-primary clears it on every surface the site has,
+   painted and measured: 8.13:1 on #0d0d0d, 7.96:1 on the tinted band,
+   7.70:1 on a dark plate; 5.23:1 on #f5f3f0, 4.87:1 on the light
+   band, 5.79:1 on a white plate.
+
+   Never write `outline: none` anywhere without putting a mark back.
+   ============================================================ */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+/* An outline on an SVG child is measured in *user units*, not CSS px
+   — verified: a 2px/3px mark on a child of a viewBox scaled 0.5 paints
+   2px outside the box, not 5. The SkillTree's landscape viewBox is
+   2340 wide against roughly 1200 of column, so the default mark would
+   land near one physical pixel. These numbers are in the same units
+   the pills are drawn in and come out around 2px painted. */
+svg [tabindex]:focus-visible,
+svg a:focus-visible {
+  outline-width: 4px;
+  outline-offset: 6px;
+}
+
+/* An outset mark is clipped by anything that hides its overflow or
+   carries a clip-path, and a clipped mark is no mark. Those cases put
+   it inside: still a 2px perimeter, still the same ink, just drawn
+   within the element's own fill (≥5:1 on both plates). Add this class
+   to the focusable itself, not to the container that clips it. */
+.focus-ring-inset:focus-visible {
+  outline-offset: -4px;
+}
+
+/* The notch is a clip-path, so a notched plate clips its own mark —
+   every interactive plate on the site would lose it. It opts itself
+   in rather than waiting to be annotated at each call site. */
+.plate-notch:focus-visible {
+  outline-offset: -4px;
+}
+
+/* ============================================================
+   UTILITY: DRAFTING PLATE — squared surface, no blur
+   ============================================================ */
+.plate {
+  background: var(--surface-plate);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-plate);
+}
+
+/* Clipped top-right corner — marks a plate as interactive */
+.plate-notch {
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--notch)) 0,
+    100% var(--notch),
+    100% 100%,
+    0 100%
+  );
+}
+
+/* Section boundary rule */
+.hairline {
+  height: var(--rule-w);
+  border: 0;
+  background: var(--border-subtle);
+}
+
+/* Left edge that fills in on hover — marks "this leads somewhere" */
+.accent-edge {
+  position: relative;
+}
+.accent-edge::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--accent-primary);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.35s var(--ease-out-expo);
+}
+.accent-edge:hover::before,
+.accent-edge:focus-within::before {
+  transform: scaleY(1);
+}
+
+/* A plate that leads somewhere also lifts under the pointer.
+   This rule is here because the Tailwind one could never work:
+   `.plate` sets `background` unlayered, and Tailwind's utilities live
+   in `@layer utilities`, which the cascade ranks below unlayered
+   rules — so `hover:bg-[var(--surface-plate-hover)]` on the post
+   cards was generated, matched, and lost, in both themes. Keyed on
+   accent-edge rather than on .plate so the sheets that are only
+   surfaces (the boxed sheet body, the hire card, the theme toggle)
+   do not start responding to a pointer that cannot click them. */
+.plate.accent-edge:hover {
+  background: var(--surface-plate-hover);
+}
+
+/* ============================================================
+   UTILITY: SHEET — a section drawn as one plate of a drawing set
+
+   The title block is the section's eyebrow promoted to a ruled bar,
+   so the running order (`04 / HISTORY`) reads where a drawing puts
+   it. Two cells and then blank bar: a title block with empty fields
+   is what a real one looks like, and the blank is what keeps it from
+   competing with the heading underneath. Blog posts add a third and
+   fourth cell for the post's own date and reading time.
+
+   Two variants, and the rule between them is: a plate is never drawn
+   inside a plate.
+     .sheet-boxed  the body is one composition → frame it
+     (default)     the body is already a set of plates → strip only
+   ============================================================ */
+.sheet-tb {
+  display: flex;
+  flex-wrap: wrap;
+  background: var(--surface-plate);
+  border: var(--rule-w) solid var(--border-subtle);
+  border-radius: var(--radius-plate) var(--radius-plate) 0 0;
+}
+
+.sheet-tb-cell {
+  padding: var(--tb-pad-y) var(--tb-pad-x);
+  border-right: var(--rule-w) solid var(--border-faint);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* Every cell closes with a rule — a block of two cells followed by
+   blank bar is a title block with empty fields, which is how a real
+   one looks. Only a trailing fill cell drops it, so its rule does not
+   double up with the bar's own border. */
+.sheet-tb-fill {
+  border-right: 0;
+}
+.sheet-tb-index {
+  color: var(--accent-primary);
+}
+/* The measurement cell takes the slack and truncates rather than
+   wrapping the bar to two lines mid-layout. */
+.sheet-tb-fill {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Under 640px three mono cells cannot share a line at this tracking,
+   so the measurement drops to its own row and keeps its rule. */
+@media (max-width: 639px) {
+  .sheet-tb-fill {
+    flex-basis: 100%;
+    border-top: var(--rule-w) solid var(--border-faint);
+  }
+}
+
+.sheet-body {
+  padding-top: 2.5rem;
+}
+.sheet-boxed > .sheet-body {
+  background: var(--surface-plate);
+  border: var(--rule-w) solid var(--border-subtle);
+  border-top: 0;
+  border-radius: 0 0 var(--radius-plate) var(--radius-plate);
+  padding: 2.5rem 1.25rem 3rem;
+}
+@media (min-width: 768px) {
+  .sheet-boxed > .sheet-body {
+    padding: 3rem 2.5rem 3.5rem;
+  }
+}
+
+/* One band is tinted — the SkillTree's — so the page has a single
+   point of emphasis rather than a stripe pattern. */
+.band-tint {
+  background: var(--surface-band);
+  border-top: var(--rule-w) solid var(--border-faint);
+  border-bottom: var(--rule-w) solid var(--border-faint);
+}
+
+/* ============================================================
+   UTILITY: NOISE TEXTURE OVERLAY
+   ============================================================ */
+.noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  /* The grain's own strength is baked into the data URI, where nothing
+     can reach it; this multiplies it from outside. 1 is the drawn
+     value. */
+  opacity: var(--noise-opacity);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ============================================================
+   UTILITY: BLUEPRINT GRID (Hero background)
+   ============================================================ */
+/* One rule for both modes: the mode difference is --grid-alpha, and
+   the `ground` presets reach the same two tokens. */
+.blueprint-grid {
+  background-image:
+    linear-gradient(rgb(var(--accent-primary-rgb) / var(--grid-alpha)) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--accent-primary-rgb) / var(--grid-alpha)) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+}
+
+/* The grid is the hero's ruled paper, not an effect — it holds still. */
+
+/* ============================================================
+   SECTION REVEALS
+   .reveal is a marker only — src/scripts/motion animates these and
+   sets their starting state in JS. Nothing here hides content, so
+   no-JS and reduced-motion both show the finished page.
+   ============================================================ */
+
+/* ============================================================
+   SKILLTREE PHYSICS PANEL — enter/exit
+   ============================================================ */
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes panelOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-8px); }
+}
+
+/* ============================================================
+   SKILLTREE IDLE SWAY (static variant)
+   Amplitude, phase and period come from per-node custom
+   properties set in Static.tsx, so one rule covers every pill.
+   ============================================================ */
+@media (prefers-reduced-motion: no-preference) {
+  .skill-sway {
+    animation: skillSway var(--sway-duration, 6s) ease-in-out var(--sway-delay, 0s) infinite;
+  }
+  @keyframes skillSway {
+    0%   { transform: translate(0, 0); }
+    25%  { transform: translate(var(--sway-amp), calc(var(--sway-amp) * -0.3)); }
+    50%  { transform: translate(calc(var(--sway-amp) * -0.5), calc(var(--sway-amp) * 0.25)); }
+    75%  { transform: translate(calc(var(--sway-amp) * 0.3), calc(var(--sway-amp) * -0.15)); }
+    100% { transform: translate(0, 0); }
+  }
+}
+
+/* ============================================================
+   THEME-AWARE BORDER UTILITIES
+   ============================================================ */
+.border-subtle { border-color: var(--border-subtle); }
+.border-faint  { border-color: var(--border-faint); }
+
+/* ============================================================
+   REDUCED MOTION — kill Tailwind-defined animations
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-pulse-glow,
+  .animate-bounce-slow,
+  .animate-pulse {
+    animation: none !important;
+  }
+}

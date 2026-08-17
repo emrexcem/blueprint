@@ -1,0 +1,103 @@
+---
+/*  Sheet.astro
+    Every section is one plate of the drawing set: a title block, then
+    the body. It replaces the old SectionHeader — the eyebrow that used
+    to sit loose above the heading is now the block's first two cells,
+    which is where a drawing puts its sheet number.
+
+    `boxed` frames the body. Leave it off when the body is already a
+    set of plates (the project grid, the post cards) — a plate is
+    never drawn inside a plate.                                      */
+
+interface Props {
+  /** Position in the page's running order, e.g. 2 renders as "02".
+      Accepts a string for sheets outside the run (the 404). */
+  index: number | string;
+  /** Short uppercase name, second cell of the block. */
+  label: string;
+  title: string;
+  /** Renders the title as an h1. For pages whose sheet *is* the page. */
+  heading?: "h1" | "h2";
+  description?: string;
+  /** Replaces `description` below 900px, for sections whose
+      interaction differs on touch. Both are in the markup; CSS
+      picks, so it works without JS. 900px is where the SkillTree
+      swaps to its portrait variant (see skill-tree/hooks.ts) —
+      the two must stay in step or the copy describes the wrong
+      interaction. */
+  descriptionNarrow?: string;
+  /** Anchor for the navbar; also the section's id. */
+  id?: string;
+  /** Frame the body. Off when the body carries its own plates. */
+  boxed?: boolean;
+  /** Tint the band behind the sheet. Used once, for the SkillTree. */
+  band?: boolean;
+  /** Narrow the sheet to a reading measure. For pages that are a list
+      of prose rather than a composition — the blog index. */
+  narrow?: boolean;
+  /** Vertical rhythm. "page" trims the top padding, for a sheet that
+      opens a page under a back link instead of following a section —
+      a section's worth of air there reads as a hole, not a gap. */
+  rhythm?: "section" | "page";
+  /** Extra classes on the <section>. */
+  class?: string;
+}
+
+const {
+  index,
+  label,
+  title,
+  heading = "h2",
+  description,
+  descriptionNarrow,
+  id,
+  boxed = false,
+  band = false,
+  narrow = false,
+  rhythm = "section",
+  class: className,
+} = Astro.props;
+
+const sheet = typeof index === "number" ? String(index).padStart(2, "0") : index;
+const Heading = heading;
+---
+
+<section
+  id={id}
+  class:list={[
+    "relative px-6",
+    rhythm === "page" ? "pt-8 pb-24 md:pb-28" : "py-24 md:py-28",
+    band && "band-tint",
+    className,
+  ]}
+>
+  <div class:list={["mx-auto", narrow ? "max-w-4xl" : "max-w-6xl"]}>
+    <div class:list={["sheet", boxed && "sheet-boxed"]} data-sheet>
+      <div class="sheet-tb">
+        <span class="sheet-tb-cell sheet-tb-index">{sheet}</span>
+        <span class="sheet-tb-cell">{label}</span>
+      </div>
+
+      <div class="sheet-body">
+        <Heading class="type-section text-[var(--text-primary)]">{title}</Heading>
+
+        <hr class="hairline sheet-rule mt-5" />
+
+        {description && (
+          <p class="sheet-lede mt-6 text-text-muted leading-relaxed max-w-xl">
+            {descriptionNarrow ? (
+              <Fragment>
+                <span class="hidden min-[900px]:inline">{description}</span>
+                <span class="min-[900px]:hidden">{descriptionNarrow}</span>
+              </Fragment>
+            ) : description}
+          </p>
+        )}
+
+        <div class="mt-10">
+          <slot />
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

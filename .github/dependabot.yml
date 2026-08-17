@@ -1,0 +1,20 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      astro:
+        patterns: ["astro", "@astrojs/*", "astro-*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react*"]
+    # The build pulls canvaskit-wasm, harfbuzzjs and fontkit through the OG
+    # card route and the font subsetter. Those three are the most likely to
+    # break on a bump, so they are deliberately left ungrouped: a failure
+    # should name one package rather than a batch.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

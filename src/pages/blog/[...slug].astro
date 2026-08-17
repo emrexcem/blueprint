@@ -1,0 +1,13 @@
+---
+/*  src/pages/blog/[...slug].astro — English post route. */
+import BlogPostPage from "../../components/pages/BlogPostPage.astro";
+import { postPaths } from "../../lib/posts";
+
+export async function getStaticPaths() {
+  return postPaths();
+}
+
+const { post } = Astro.props;
+---
+
+<BlogPostPage post={post} />

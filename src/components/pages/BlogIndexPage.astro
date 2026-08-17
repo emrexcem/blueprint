@@ -1,0 +1,497 @@
+---
+/*  BlogIndexPage.astro
+    Blog listing with interactive tag filtering, year grouping,
+    and sort controls. Angular/neoclassical design language.
+    All filtering is client-side via the script at the bottom.
+
+    Post titles, descriptions and tags stay in the language each post
+    was written in; only the furniture around them translates. The
+    strings the filter script builds at runtime are handed to it
+    through a data attribute, because the script is bundled once for
+    the whole site and cannot know which language rendered the page. */
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Navbar from "../astro/Navbar.astro";
+import Footer from "../astro/Footer.astro";
+import Sheet from "../astro/Sheet.astro";
+import { getPublishedPosts } from "../../lib/posts";
+import { format, getLang, localizePath, useTranslations, withBase } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+const published = await getPublishedPosts();
+
+/* Reading time comes from the remark plugin, so listing and post agree */
+const posts = await Promise.all(
+  published.map(async (post) => ({
+    ...post,
+    readingTime: (await post.render()).remarkPluginFrontmatter.readingTime as number,
+  }))
+);
+
+/* Collect all unique tags + years for the filter UI */
+const allTags = [...new Set(posts.flatMap((p) => p.data.tags))].sort();
+const allYears = [...new Set(posts.map((p) => p.data.date.getFullYear()))].sort((a, b) => b - a);
+
+/* Accent colors for tag pills (cycle through the warm palette) */
+const tagColors = [
+  "var(--accent-primary)",
+  "var(--accent-secondary)",
+  "var(--accent-tertiary)",
+];
+
+/* Templates the filter script fills in; see format() in src/i18n */
+const scriptStrings = JSON.stringify({
+  newest: t.blogIndex.newest,
+  oldest: t.blogIndex.oldest,
+  countOne: t.blogIndex.countOne,
+  countMany: t.blogIndex.countMany,
+  countFiltered: t.blogIndex.countFiltered,
+  showing: t.blogIndex.showing,
+  tagPart: t.blogIndex.tagPart,
+  yearPart: t.blogIndex.yearPart,
+});
+---
+
+<BaseLayout title={t.meta.blogTitle} description={t.meta.blogDescription}>
+  <Navbar />
+
+  <main class="pt-24">
+    <div class="max-w-4xl mx-auto px-6">
+      <a
+        href={localizePath("/", lang)}
+        class="inline-flex items-center gap-1 font-mono text-sm text-text-muted hover:text-accent-primary transition-colors"
+      >
+        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M19 12H5M12 19l-7-7 7-7" />
+        </svg>
+        {t.blogIndex.home}
+      </a>
+    </div>
+
+    {/* Not `boxed`: the filter bar and every post card are plates. */}
+    <Sheet
+      index={5}
+      label={t.writing.label}
+      title={t.writing.title}
+      heading="h1"
+      narrow
+      rhythm="page"
+    >
+      <div class="flex flex-wrap items-baseline justify-between gap-3 mb-8">
+        <p class="text-text-muted">{t.writing.description}</p>
+        <a
+          href={withBase("/rss.xml")}
+          class="data-label text-text-muted hover:text-accent-primary transition-colors shrink-0"
+        >
+          {t.blogIndex.rss}
+        </a>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar plate p-5 mb-10 space-y-4" data-strings={scriptStrings}>
+
+        <!-- Tags row -->
+        <div>
+          <p class="font-mono text-[10px] tracking-[0.2em] text-text-muted mb-3 uppercase">{t.blogIndex.filterByTag}</p>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="tag-btn active"
+              data-tag="all"
+              style={`--tag-color: var(--accent-primary)`}
+            >
+              {t.blogIndex.all}
+            </button>
+            {allTags.map((tag, i) => (
+              <button
+                class="tag-btn"
+                data-tag={tag}
+                style={`--tag-color: ${tagColors[i % tagColors.length]}`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <!-- Year + Sort row -->
+        <div class="flex flex-wrap items-center gap-4 pt-3 border-t border-faint">
+          <div class="flex items-center gap-3">
+            <p class="font-mono text-[10px] tracking-[0.2em] text-text-muted uppercase">{t.blogIndex.year}</p>
+            <div class="flex gap-1.5">
+              <button class="year-btn active" data-year="all">{t.blogIndex.all}</button>
+              {allYears.map((year) => (
+                <button class="year-btn" data-year={String(year)}>{year}</button>
+              ))}
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 ml-auto">
+            <p class="font-mono text-[10px] tracking-[0.2em] text-text-muted uppercase">{t.blogIndex.sort}</p>
+            <button
+              id="sort-toggle"
+              class="sort-btn flex items-center gap-1.5"
+            >
+              <span id="sort-label">{t.blogIndex.newest}</span>
+              <svg class="w-3 h-3 transition-transform duration-300" id="sort-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active filter summary -->
+        <p id="filter-summary" class="font-mono text-[11px] text-text-muted pt-1 hidden"></p>
+      </div>
+
+      <!-- Post list -->
+      {posts.length === 0 ? (
+        <div class="plate p-12 text-center empty-card">
+          <p class="font-mono text-text-muted">
+            {t.writing.empty}
+          </p>
+        </div>
+      ) : (
+        <div id="post-list" class="space-y-4">
+          {posts.map((post) => (
+            <article
+              class="post-card plate accent-edge group relative"
+              data-tags={post.data.tags.join(",")}
+              data-year={String(post.data.date.getFullYear())}
+              data-date={post.data.date.valueOf()}
+            >
+              <a
+                href={localizePath(`/blog/${post.slug}`, lang)}
+                class="absolute inset-0 z-10 focus-ring-inset"
+                aria-label={post.data.title}
+              ></a>
+
+              <div class="p-6 md:p-7 pl-8 md:pl-9">
+                <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2 mb-3">
+                  <h2
+                    class="type-card text-[var(--text-primary)] group-hover:text-accent-primary transition-colors"
+                    transition:name={`post-title-${post.slug}`}
+                  >
+                    {post.data.title}
+                  </h2>
+                  <p class="flex items-center gap-2 shrink-0 md:mt-1.5">
+                    <time class="data-label text-text-muted" datetime={post.data.date.toISOString()}>
+                      {post.data.date.toLocaleDateString(t.dateLocale, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </time>
+                    <span aria-hidden="true" class="text-text-muted/30">·</span>
+                    <span class="data-label text-text-muted">
+                      {format(t.blogIndex.readingTime, { n: post.readingTime })}
+                    </span>
+                  </p>
+                </div>
+                <p class="text-text-muted text-sm leading-relaxed mb-4">
+                  {post.data.description}
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  {post.data.tags.map((tag: string) => (
+                    <span class="tag-label">{tag}</span>
+                  ))}
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      <!-- Empty state after filtering -->
+      <div id="no-results" class="hidden plate p-12 text-center mt-4 empty-card">
+        <p class="font-mono text-text-muted text-sm">
+          {t.blogIndex.noMatch}
+        </p>
+        <button
+          id="clear-filters"
+          class="font-mono text-xs text-accent-primary mt-3 hover:underline"
+        >
+          {t.blogIndex.clearFilters}
+        </button>
+      </div>
+
+      <!-- Post count -->
+      <p id="post-count" class="font-mono text-[11px] tracking-wider text-text-muted mt-8 text-center uppercase"></p>
+    </Sheet>
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<style>
+  /* ══════════════════════════════════════════════════════════
+     ANGULAR / NEOCLASSICAL BLOG DESIGN
+     Sharp corners, clipped edges, geometric accent marks.
+     All colors use CSS vars — fully dark/light aware.
+     ══════════════════════════════════════════════════════════ */
+
+  /* ── Filter bar ────────────────────────────────── */
+
+  .filter-bar {
+    position: relative;
+  }
+
+  /* Decorative corner notch — top-right */
+  .filter-bar::before {
+    content: "";
+    position: absolute;
+    top: -1px;
+    right: -1px;
+    width: 14px;
+    height: 14px;
+    background: var(--bg-dark);
+    border-left: 1px solid var(--border-subtle);
+    border-bottom: 1px solid var(--border-subtle);
+    clip-path: polygon(100% 0, 0 100%, 100% 100%);
+    z-index: 1;
+  }
+
+  /* ── Shared button base ────────────────────────── */
+
+  .tag-btn,
+  .year-btn,
+  .sort-btn {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid var(--border-subtle);
+    border-radius: 1px;
+    color: var(--text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tag-btn { padding: 0.35rem 0.75rem; }
+  .year-btn { padding: 0.3rem 0.6rem; }
+  .sort-btn { padding: 0.3rem 0.6rem; }
+
+  /* ── Tag hover / active ────────────────────────── */
+
+  .tag-btn:hover {
+    border-color: var(--tag-color);
+    color: var(--tag-color);
+  }
+  .tag-btn.active {
+    border-color: var(--tag-color);
+    background: var(--tag-color);
+    color: var(--text-on-accent);
+  }
+
+  /* ── Year hover / active ───────────────────────── */
+
+  .year-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+  }
+  .year-btn.active {
+    border-color: var(--accent-primary);
+    background: var(--accent-primary);
+    color: var(--text-on-accent);
+  }
+
+  /* ── Sort hover ────────────────────────────────── */
+
+  .sort-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+  }
+
+  /* ── Post cards ────────────────────────────────── */
+
+  .post-card {
+    overflow: hidden;
+    /* `background` is in the list because .plate.accent-edge:hover tints it
+       from global.css; without it the tint snaps here while the identical
+       cards on the homepage (transition-colors) fade. */
+    transition: opacity 0.3s ease, transform 0.3s ease, margin 0.3s ease,
+      border-color 0.3s ease, background-color 0.3s ease;
+    cursor: pointer;
+  }
+  .post-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--accent-primary);
+    box-shadow: 0 8px 30px rgb(var(--accent-primary-rgb) / 0.06);
+  }
+
+  /* Tag labels inside cards */
+  .tag-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.5rem;
+    border: 1px solid var(--border-subtle);
+    border-radius: 1px;
+    color: var(--text-muted);
+  }
+
+  /* ── Filtered-out animation ────────────────────── */
+
+  .post-card.filtered-out {
+    opacity: 0;
+    transform: scale(0.97);
+    height: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    pointer-events: none;
+    border: none;
+  }
+
+  /* ── Empty state card ──────────────────────────── */
+
+  .empty-card {
+    border-radius: 2px;
+    border: 1px solid var(--border-subtle);
+  }
+</style>
+
+<script>
+  /* ── Blog filter / sort controller ─────────────── */
+  import { onPageLoad } from '../../scripts/lifecycle';
+  import { format } from '../../i18n';
+
+  /* Same shape as `scriptStrings` above. */
+  interface Strings {
+    newest: string;
+    oldest: string;
+    countOne: string;
+    countMany: string;
+    countFiltered: string;
+    showing: string;
+    tagPart: string;
+    yearPart: string;
+  }
+
+  const FALLBACK: Strings = {
+    newest: 'Newest',
+    oldest: 'Oldest',
+    countOne: '{n} post',
+    countMany: '{n} posts',
+    countFiltered: '{n} of {m} posts',
+    showing: 'Showing {parts}',
+    tagPart: 'tag: {v}',
+    yearPart: 'year: {v}',
+  };
+
+  onPageLoad((scope) => {
+  const cards = document.querySelectorAll<HTMLElement>('.post-card');
+  if (!cards.length) return;
+  const tagBtns = document.querySelectorAll<HTMLButtonElement>('.tag-btn');
+  const yearBtns = document.querySelectorAll<HTMLButtonElement>('.year-btn');
+  const sortToggle = document.getElementById('sort-toggle');
+  const sortLabel = document.getElementById('sort-label');
+  const sortIcon = document.getElementById('sort-icon');
+  const noResults = document.getElementById('no-results');
+  const clearBtn = document.getElementById('clear-filters');
+  const postCount = document.getElementById('post-count');
+  const postList = document.getElementById('post-list');
+  const filterSummary = document.getElementById('filter-summary');
+  const filterBar = document.querySelector<HTMLElement>('.filter-bar');
+
+  // The page rendered its own language into the markup; read it back
+  // rather than bundling every language into this script.
+  let s: Strings = FALLBACK;
+  try {
+    if (filterBar?.dataset.strings) s = JSON.parse(filterBar.dataset.strings);
+  } catch {
+    s = FALLBACK;
+  }
+
+  let activeTag = 'all';
+  let activeYear = 'all';
+  let sortNewest = true;
+
+  function applyFilters() {
+    let visible = 0;
+
+    cards.forEach((card) => {
+      const tags = (card.dataset.tags || '').split(',');
+      const year = card.dataset.year || '';
+
+      const tagMatch = activeTag === 'all' || tags.includes(activeTag);
+      const yearMatch = activeYear === 'all' || year === activeYear;
+
+      if (tagMatch && yearMatch) {
+        card.classList.remove('filtered-out');
+        visible++;
+      } else {
+        card.classList.add('filtered-out');
+      }
+    });
+
+    if (noResults) noResults.classList.toggle('hidden', visible > 0);
+    if (postList) postList.classList.toggle('hidden', visible === 0);
+
+    if (postCount) {
+      postCount.textContent =
+        visible === cards.length
+          ? format(visible === 1 ? s.countOne : s.countMany, { n: visible })
+          : format(s.countFiltered, { n: visible, m: cards.length });
+    }
+
+    if (filterSummary) {
+      const parts: string[] = [];
+      if (activeTag !== 'all') parts.push(format(s.tagPart, { v: activeTag }));
+      if (activeYear !== 'all') parts.push(format(s.yearPart, { v: activeYear }));
+      if (parts.length > 0) {
+        filterSummary.textContent = format(s.showing, { parts: parts.join(' · ') });
+        filterSummary.classList.remove('hidden');
+      } else {
+        filterSummary.classList.add('hidden');
+      }
+    }
+  }
+
+  function applySort() {
+    if (!postList) return;
+    const sorted = [...cards].sort((a, b) => {
+      const da = Number(a.dataset.date || 0);
+      const db = Number(b.dataset.date || 0);
+      return sortNewest ? db - da : da - db;
+    });
+    sorted.forEach((card) => postList.appendChild(card));
+  }
+
+  tagBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeTag = btn.dataset.tag || 'all';
+      tagBtns.forEach((b) => b.classList.toggle('active', b.dataset.tag === activeTag));
+      applyFilters();
+    }, { signal: scope.signal });
+  });
+
+  yearBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      activeYear = btn.dataset.year || 'all';
+      yearBtns.forEach((b) => b.classList.toggle('active', b.dataset.year === activeYear));
+      applyFilters();
+    }, { signal: scope.signal });
+  });
+
+  sortToggle?.addEventListener('click', () => {
+    sortNewest = !sortNewest;
+    if (sortLabel) sortLabel.textContent = sortNewest ? s.newest : s.oldest;
+    if (sortIcon) sortIcon.style.transform = sortNewest ? '' : 'rotate(180deg)';
+    applySort();
+  }, { signal: scope.signal });
+
+  clearBtn?.addEventListener('click', () => {
+    activeTag = 'all';
+    activeYear = 'all';
+    tagBtns.forEach((b) => b.classList.toggle('active', b.dataset.tag === 'all'));
+    yearBtns.forEach((b) => b.classList.toggle('active', b.dataset.year === 'all'));
+    applyFilters();
+  }, { signal: scope.signal });
+
+  applyFilters();
+  });
+</script>

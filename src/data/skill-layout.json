@@ -1,0 +1,663 @@
+{
+  "version": 5,
+  "viewBox": {
+    "width": 2340,
+    "height": 1716
+  },
+  "domainY": 1040,
+  "domains": [
+    {
+      "name": "GPU Programming",
+      "x": 90,
+      "y": 1040
+    },
+    {
+      "name": "Image Processing",
+      "x": 522,
+      "y": 1040
+    },
+    {
+      "name": "Data Analysis",
+      "x": 954,
+      "y": 1040
+    },
+    {
+      "name": "AI / ML",
+      "x": 1386,
+      "y": 1040
+    },
+    {
+      "name": "System Admin",
+      "x": 1818,
+      "y": 1040
+    },
+    {
+      "name": "Web Dev",
+      "x": 2250,
+      "y": 1040
+    }
+  ],
+  "skills": [
+    {
+      "name": "GLSL",
+      "kind": "language",
+      "domains": [
+        "GPU Programming"
+      ],
+      "x": 216.6,
+      "y": 180,
+      "halfW": 96.6,
+      "swayAmp": 9.96,
+      "swayDelay": 0.46
+    },
+    {
+      "name": "OpenCV",
+      "kind": "tool",
+      "domains": [
+        "Image Processing"
+      ],
+      "x": 522,
+      "y": 180,
+      "halfW": 116.4,
+      "swayAmp": 9.01,
+      "swayDelay": 0.51
+    },
+    {
+      "name": "PyTorch",
+      "kind": "tool",
+      "domains": [
+        "AI / ML"
+      ],
+      "x": 1386,
+      "y": 180,
+      "halfW": 126.3,
+      "swayAmp": 6.61,
+      "swayDelay": 0.11
+    },
+    {
+      "name": "FastAPI",
+      "kind": "tool",
+      "domains": [
+        "Web Dev"
+      ],
+      "x": 1810.7,
+      "y": 180,
+      "halfW": 126.3,
+      "swayAmp": 7.16,
+      "swayDelay": 1.66
+    },
+    {
+      "name": "React",
+      "kind": "tool",
+      "domains": [
+        "Web Dev"
+      ],
+      "x": 2113.5,
+      "y": 180,
+      "halfW": 106.5,
+      "swayAmp": 6.65,
+      "swayDelay": 0.15
+    },
+    {
+      "name": "OpenGL",
+      "kind": "tool",
+      "domains": [
+        "GPU Programming"
+      ],
+      "x": 236.4,
+      "y": 310,
+      "halfW": 116.4,
+      "swayAmp": 7.87,
+      "swayDelay": 1.37
+    },
+    {
+      "name": "HuggingFace",
+      "kind": "tool",
+      "domains": [
+        "AI / ML"
+      ],
+      "x": 1086.3,
+      "y": 310,
+      "halfW": 165.9,
+      "swayAmp": 10.08,
+      "swayDelay": 0.58
+    },
+    {
+      "name": "Linux",
+      "kind": "tool",
+      "domains": [
+        "System Admin"
+      ],
+      "x": 1428.7,
+      "y": 310,
+      "halfW": 106.5,
+      "swayAmp": 7.58,
+      "swayDelay": 1.08
+    },
+    {
+      "name": "Golang",
+      "kind": "language",
+      "domains": [
+        "Web Dev"
+      ],
+      "x": 1721.6,
+      "y": 310,
+      "halfW": 116.4,
+      "swayAmp": 8.6,
+      "swayDelay": 1.1
+    },
+    {
+      "name": "TypeScript",
+      "kind": "language",
+      "domains": [
+        "Web Dev"
+      ],
+      "x": 2064,
+      "y": 310,
+      "halfW": 156,
+      "swayAmp": 7.35,
+      "swayDelay": 0.85
+    },
+    {
+      "name": "C / C++",
+      "kind": "language",
+      "domains": [
+        "GPU Programming",
+        "Image Processing"
+      ],
+      "x": 286.5,
+      "y": 440,
+      "halfW": 126.3,
+      "swayAmp": 10.27,
+      "swayDelay": 0.77
+    },
+    {
+      "name": "Supervised Fine-Tuning",
+      "kind": "tool",
+      "domains": [
+        "GPU Programming",
+        "AI / ML"
+      ],
+      "x": 757.6,
+      "y": 440,
+      "halfW": 274.8,
+      "swayAmp": 10.22,
+      "swayDelay": 1.72
+    },
+    {
+      "name": "Docker",
+      "kind": "tool",
+      "domains": [
+        "System Admin",
+        "Web Dev"
+      ],
+      "x": 2034,
+      "y": 440,
+      "halfW": 116.4,
+      "swayAmp": 11.3,
+      "swayDelay": 0.8
+    },
+    {
+      "name": "NumPy",
+      "kind": "tool",
+      "domains": [
+        "Image Processing",
+        "Data Analysis"
+      ],
+      "x": 738,
+      "y": 570,
+      "halfW": 106.5,
+      "swayAmp": 6.85,
+      "swayDelay": 1.35
+    },
+    {
+      "name": "PostgreSQL",
+      "kind": "tool",
+      "domains": [
+        "Data Analysis",
+        "Web Dev"
+      ],
+      "x": 1602,
+      "y": 570,
+      "halfW": 156,
+      "swayAmp": 9.5,
+      "swayDelay": 1
+    },
+    {
+      "name": "Kubernetes",
+      "kind": "tool",
+      "domains": [
+        "System Admin",
+        "Web Dev"
+      ],
+      "x": 2034,
+      "y": 570,
+      "halfW": 156,
+      "swayAmp": 11.12,
+      "swayDelay": 1.62
+    },
+    {
+      "name": "Python",
+      "kind": "language",
+      "domains": [
+        "Data Analysis",
+        "System Admin",
+        "Web Dev"
+      ],
+      "x": 1674,
+      "y": 700,
+      "halfW": 116.4,
+      "swayAmp": 10.74,
+      "swayDelay": 1.24
+    }
+  ],
+  "me": {
+    "x": 1170,
+    "y": 1573
+  },
+  "portrait": {
+    "viewBox": {
+      "width": 780,
+      "height": 2353
+    },
+    "spineX": 96,
+    "chipX": 150,
+    "me": {
+      "x": 96,
+      "y": 68
+    },
+    "groups": [
+      {
+        "name": "GPU Programming",
+        "markerY": 257,
+        "segTop": 107,
+        "segBottom": 657,
+        "rows": [
+          {
+            "y": 353,
+            "chips": [
+              {
+                "name": "GLSL",
+                "kind": "language",
+                "domains": [
+                  "GPU Programming"
+                ],
+                "x": 247,
+                "halfW": 96.6,
+                "shared": false
+              },
+              {
+                "name": "OpenGL",
+                "kind": "tool",
+                "domains": [
+                  "GPU Programming"
+                ],
+                "x": 482,
+                "halfW": 116.4,
+                "shared": false
+              }
+            ]
+          },
+          {
+            "y": 447,
+            "chips": [
+              {
+                "name": "Supervised Fine-Tuning",
+                "kind": "tool",
+                "domains": [
+                  "GPU Programming",
+                  "AI / ML"
+                ],
+                "x": 425,
+                "halfW": 274.8,
+                "shared": true
+              }
+            ]
+          },
+          {
+            "y": 541,
+            "chips": [
+              {
+                "name": "C / C++",
+                "kind": "language",
+                "domains": [
+                  "GPU Programming",
+                  "Image Processing"
+                ],
+                "x": 276,
+                "halfW": 126.3,
+                "shared": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Image Processing",
+        "markerY": 657,
+        "segTop": 657,
+        "segBottom": 963,
+        "rows": [
+          {
+            "y": 753,
+            "chips": [
+              {
+                "name": "OpenCV",
+                "kind": "tool",
+                "domains": [
+                  "Image Processing"
+                ],
+                "x": 266,
+                "halfW": 116.4,
+                "shared": false
+              },
+              {
+                "name": "C / C++",
+                "kind": "language",
+                "domains": [
+                  "GPU Programming",
+                  "Image Processing"
+                ],
+                "x": 531,
+                "halfW": 126.3,
+                "shared": true
+              }
+            ]
+          },
+          {
+            "y": 847,
+            "chips": [
+              {
+                "name": "NumPy",
+                "kind": "tool",
+                "domains": [
+                  "Image Processing",
+                  "Data Analysis"
+                ],
+                "x": 257,
+                "halfW": 106.5,
+                "shared": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Data Analysis",
+        "markerY": 963,
+        "segTop": 963,
+        "segBottom": 1269,
+        "rows": [
+          {
+            "y": 1059,
+            "chips": [
+              {
+                "name": "PostgreSQL",
+                "kind": "tool",
+                "domains": [
+                  "Data Analysis",
+                  "Web Dev"
+                ],
+                "x": 306,
+                "halfW": 156,
+                "shared": true
+              },
+              {
+                "name": "NumPy",
+                "kind": "tool",
+                "domains": [
+                  "Image Processing",
+                  "Data Analysis"
+                ],
+                "x": 591,
+                "halfW": 106.5,
+                "shared": true
+              }
+            ]
+          },
+          {
+            "y": 1153,
+            "chips": [
+              {
+                "name": "Python",
+                "kind": "language",
+                "domains": [
+                  "Data Analysis",
+                  "System Admin",
+                  "Web Dev"
+                ],
+                "x": 266,
+                "halfW": 116.4,
+                "shared": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "AI / ML",
+        "markerY": 1269,
+        "segTop": 1269,
+        "segBottom": 1575,
+        "rows": [
+          {
+            "y": 1365,
+            "chips": [
+              {
+                "name": "PyTorch",
+                "kind": "tool",
+                "domains": [
+                  "AI / ML"
+                ],
+                "x": 276,
+                "halfW": 126.3,
+                "shared": false
+              },
+              {
+                "name": "HuggingFace",
+                "kind": "tool",
+                "domains": [
+                  "AI / ML"
+                ],
+                "x": 591,
+                "halfW": 165.9,
+                "shared": false
+              }
+            ]
+          },
+          {
+            "y": 1459,
+            "chips": [
+              {
+                "name": "Supervised Fine-Tuning",
+                "kind": "tool",
+                "domains": [
+                  "GPU Programming",
+                  "AI / ML"
+                ],
+                "x": 425,
+                "halfW": 274.8,
+                "shared": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "System Admin",
+        "markerY": 1575,
+        "segTop": 1575,
+        "segBottom": 1881,
+        "rows": [
+          {
+            "y": 1671,
+            "chips": [
+              {
+                "name": "Linux",
+                "kind": "tool",
+                "domains": [
+                  "System Admin"
+                ],
+                "x": 257,
+                "halfW": 106.5,
+                "shared": false
+              },
+              {
+                "name": "Docker",
+                "kind": "tool",
+                "domains": [
+                  "System Admin",
+                  "Web Dev"
+                ],
+                "x": 501,
+                "halfW": 116.4,
+                "shared": true
+              }
+            ]
+          },
+          {
+            "y": 1765,
+            "chips": [
+              {
+                "name": "Python",
+                "kind": "language",
+                "domains": [
+                  "Data Analysis",
+                  "System Admin",
+                  "Web Dev"
+                ],
+                "x": 266,
+                "halfW": 116.4,
+                "shared": true
+              },
+              {
+                "name": "Kubernetes",
+                "kind": "tool",
+                "domains": [
+                  "System Admin",
+                  "Web Dev"
+                ],
+                "x": 561,
+                "halfW": 156,
+                "shared": true
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "name": "Web Dev",
+        "markerY": 1881,
+        "segTop": 1881,
+        "segBottom": 2293,
+        "rows": [
+          {
+            "y": 1977,
+            "chips": [
+              {
+                "name": "Golang",
+                "kind": "language",
+                "domains": [
+                  "Web Dev"
+                ],
+                "x": 266,
+                "halfW": 116.4,
+                "shared": false
+              },
+              {
+                "name": "React",
+                "kind": "tool",
+                "domains": [
+                  "Web Dev"
+                ],
+                "x": 511,
+                "halfW": 106.5,
+                "shared": false
+              }
+            ]
+          },
+          {
+            "y": 2071,
+            "chips": [
+              {
+                "name": "FastAPI",
+                "kind": "tool",
+                "domains": [
+                  "Web Dev"
+                ],
+                "x": 276,
+                "halfW": 126.3,
+                "shared": false
+              },
+              {
+                "name": "TypeScript",
+                "kind": "language",
+                "domains": [
+                  "Web Dev"
+                ],
+                "x": 581,
+                "halfW": 156,
+                "shared": false
+              }
+            ]
+          },
+          {
+            "y": 2165,
+            "chips": [
+              {
+                "name": "PostgreSQL",
+                "kind": "tool",
+                "domains": [
+                  "Data Analysis",
+                  "Web Dev"
+                ],
+                "x": 306,
+                "halfW": 156,
+                "shared": true
+              },
+              {
+                "name": "Docker",
+                "kind": "tool",
+                "domains": [
+                  "System Admin",
+                  "Web Dev"
+                ],
+                "x": 600,
+                "halfW": 116.4,
+                "shared": true
+              }
+            ]
+          },
+          {
+            "y": 2259,
+            "chips": [
+              {
+                "name": "Python",
+                "kind": "language",
+                "domains": [
+                  "Data Analysis",
+                  "System Admin",
+                  "Web Dev"
+                ],
+                "x": 266,
+                "halfW": 116.4,
+                "shared": true
+              },
+              {
+                "name": "Kubernetes",
+                "kind": "tool",
+                "domains": [
+                  "System Admin",
+                  "Web Dev"
+                ],
+                "x": 561,
+                "halfW": 156,
+                "shared": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

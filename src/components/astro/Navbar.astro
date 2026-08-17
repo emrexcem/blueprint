@@ -1,0 +1,290 @@
+---
+/*  Navbar.astro
+    Fixed bar with a mobile hamburger menu.
+    Theme toggle calls window.toggleTheme() defined in BaseLayout;
+    the language switch is a pair of plain links (LangSwitch.astro).
+
+    On the homepage the bar clears its own background while the only
+    thing behind it is the hero sheet's top margin — see `data-over-hero`
+    and the watcher at the bottom of this file. Everywhere else, and with
+    no JavaScript, it is solid.                                        */
+
+import LangSwitch from "./LangSwitch.astro";
+import { getLang, localizePath, stripLang, useTranslations } from "../../i18n";
+import { site } from "../../config";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+// Section links are relative to the homepage — on sub-pages (/blog, /blog/[slug])
+// they need the homepage in front so they navigate back to the homepage anchor
+// instead of appending the hash to the current path (e.g. /blog#about). In
+// German that homepage is /de/, which is the other reason this nav is not
+// transition:persist-ed: the hrefs differ per page *and* per language, so a
+// persisted nav would carry the wrong ones across a navigation.
+const home = localizePath("/", lang);
+const initials = site.author.split(/\s+/).map((part) => part[0]).join("");
+const isHome = stripLang(Astro.url.pathname) === "/";
+
+const links = [
+  { label: t.nav.about, href: "#about" },
+  { label: t.nav.skills, href: "#skills" },
+  { label: t.nav.projects, href: "#projects" },
+  { label: t.nav.experience, href: "#experience" },
+  { label: t.nav.blog, href: localizePath("/blog", lang) },
+  { label: t.nav.contact, href: "#contact" },
+].map((link) => ({
+  ...link,
+  href: !isHome && link.href.startsWith("#") ? `${home}${link.href}` : link.href,
+}));
+---
+
+<nav
+  class="fixed top-0 inset-x-0 z-50"
+  id="navbar"
+  data-over-hero={isHome ? "" : undefined}
+>
+  <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+    <!-- Logo / Monogram -->
+    {/* The mark is the author's initials, taken from config.ts so it
+        cannot drift from the name in the hero. Three letters is the
+        width this bar was spaced for; a longer name still fits, but
+        check it against the German labels at 768px. */}
+    <a
+      href={home}
+      class="font-mono font-bold text-xl tracking-widest text-accent-primary hover:opacity-80 transition-opacity"
+    >
+      {initials}
+    </a>
+
+    <!-- Desktop links. The gap tightens at md so the longer German
+         labels still clear the logo and the controls at 768px. -->
+    <div class="hidden md:flex items-center gap-6 lg:gap-8">
+      {links.map((link) => (
+        <a
+          href={link.href}
+          class="nav-link relative font-mono text-sm tracking-wide text-text-muted hover:text-[var(--text-primary)] transition-colors whitespace-nowrap"
+        >
+          {link.label}
+        </a>
+      ))}
+
+      <!-- Controls: items-stretch makes the language plate take its
+           height from the theme button, so neither hard-codes one -->
+      <div class="flex items-stretch gap-2 ml-2 lg:ml-4">
+        <LangSwitch stretch />
+
+        <!-- Theme toggle -->
+        <button
+          onclick="window.toggleTheme()"
+          class="p-2 plate hover:border-accent-primary/40 transition-colors"
+          aria-label={t.nav.toggleTheme}
+        >
+          <!-- Sun icon (shown in dark mode) -->
+          <svg class="w-4 h-4 dark:block hidden text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5" /><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+          <!-- Moon icon (shown in light mode) -->
+          <svg class="w-4 h-4 dark:hidden block text-[var(--accent-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile controls. The language switch sits in the bar rather
+         than inside the panel: it stays reachable without opening the
+         menu, and the panel keeps the height it was designed at. -->
+    <div class="md:hidden flex items-center gap-2">
+      <LangSwitch />
+
+      <button
+        class="p-2"
+        id="menu-toggle"
+        aria-label={t.nav.openMenu}
+        aria-controls="mobile-menu"
+        aria-expanded="false"
+      >
+        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile slide-down panel.
+       `inert` while closed, because the panel collapses to zero height
+       rather than to `display: none` — without it the six links stay in
+       the tab order and a keyboard visitor walks through six invisible
+       controls. It is set in the markup, not by script: the panel can
+       only ever be opened by the toggle, which is script anyway. -->
+  <div
+    id="mobile-menu"
+    class="md:hidden max-h-0 overflow-hidden transition-all duration-300 ease-in-out"
+    inert
+  >
+    <!-- pt-2 is for the focus ring, not the layout: the panel is
+         overflow-hidden, so with no top padding the first link's mark is
+         clipped along its top edge. -->
+    <div class="px-6 pt-2 pb-4 flex flex-col gap-4">
+      {links.map((link) => (
+        <a
+          href={link.href}
+          class="font-mono text-sm text-text-muted hover:text-accent-primary transition-colors"
+        >
+          {link.label}
+        </a>
+      ))}
+    </div>
+  </div>
+</nav>
+
+<style>
+  /* Solid is the server-rendered state, so a bar with no JavaScript
+     behind it is always readable. The watcher below *removes* the
+     background; nothing here waits for script to put it back. */
+  #navbar {
+    background-color: var(--bg-dark);
+    border-bottom: 1px solid var(--border-faint);
+  }
+
+  /* Set while the only thing behind the bar is the hero sheet's top
+     margin. The frame's top edge sits at y=40 and its two upper crop
+     marks hang off it — an opaque bar has covered the top of the one
+     device the whole design system is built on. */
+  #navbar.is-clear {
+    background-color: transparent;
+    /* Colour only. Dropping the border would change the bar's height,
+       and --nav-h is what the rest of the site offsets anchors by. */
+    border-bottom-color: transparent;
+
+    /* Vellum. With the bar clear the hero's ruled grid runs up behind
+       the labels, and a line crossing a glyph lifts the ground to
+       rgb(35,43,47) — 4.06:1 under a muted label, under the floor. A
+       top-down wash of the page colour pulls those crossings back down.
+       It is spent by 68% of the bar's height, which is below the last
+       descender and above the sheet frame at y=40, so the edge and both
+       crop marks are washed lightly or not at all — the point of
+       clearing the bar in the first place. */
+    background-image: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--bg-dark) 50%, transparent) 0%,
+      color-mix(in srgb, var(--bg-dark) 50%, transparent) 58%,
+      transparent 68%
+    );
+  }
+
+  /* The slide-down panel is inside the bar, so a clear bar would leave
+     the open menu as a floating list of links over the hero. It takes
+     the bar back whatever the scroll position says. Declared after
+     .is-clear, which it has to beat on equal specificity. */
+  @media (max-width: 767.98px) {
+    #navbar.menu-open {
+      background-color: var(--bg-dark);
+      background-image: none;
+      border-bottom-color: var(--border-faint);
+    }
+  }
+
+  /* Added a frame after the first state is applied, so the state the
+     page opens on does not animate in from solid. */
+  @media (prefers-reduced-motion: no-preference) {
+    #navbar.nav-fade {
+      transition:
+        background-color 0.3s var(--ease-out-expo),
+        border-bottom-color 0.3s var(--ease-out-expo);
+    }
+  }
+
+  /* Underline slide-in on hover */
+  .nav-link::after {
+    content: "";
+    position: absolute;
+    bottom: -4px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--accent-primary);
+    transition: width 0.3s var(--ease-out-expo);
+  }
+  .nav-link:hover::after {
+    width: 100%;
+  }
+</style>
+
+<script>
+  import { onPageLoad, type PageScope } from "../../scripts/lifecycle";
+
+  onPageLoad((scope) => {
+    mobileMenu(scope);
+    clearOverHero(scope);
+  });
+
+  /* ── Mobile slide-down panel ─────────────────────────────────
+     `inert` tracks the open state so the panel's links leave the tab
+     order the moment it starts closing. The panel collapses to zero
+     height rather than to `display: none` (it has to, to animate), so
+     without inert they stay focusable while invisible. */
+  function mobileMenu(scope: PageScope) {
+    const nav = document.getElementById("navbar");
+    const toggle = document.getElementById("menu-toggle");
+    const menu = document.getElementById("mobile-menu");
+    if (!nav || !toggle || !menu) return;
+
+    const setOpen = (open: boolean) => {
+      // Measure so the panel fits its links instead of a guessed height
+      menu.style.maxHeight = open ? `${menu.scrollHeight}px` : "0px";
+      menu.inert = !open;
+      toggle.setAttribute("aria-expanded", String(open));
+      // The panel needs a surface under it even over the hero
+      nav.classList.toggle("menu-open", open);
+    };
+
+    toggle.addEventListener(
+      "click",
+      () => setOpen(menu.inert),
+      { signal: scope.signal }
+    );
+
+    menu.querySelectorAll("a").forEach((a) =>
+      a.addEventListener("click", () => setOpen(false), { signal: scope.signal })
+    );
+  }
+
+  /* ── Transparent bar over the hero's top margin ───────────────
+     Homepage only (`data-over-hero`), and only while the hero's text
+     block is still below the bar. Staying clear for the whole hero was
+     tried: the display-sized name slides under the bar 265px into the
+     scroll, and muted nav labels over it measure 2.8:1 — a scrim can't
+     fix that, because darkening the backdrop moves it *towards* the
+     label colour. Clearing just the sheet's top margin shows the frame
+     edge and both upper crop marks, and the background is back before
+     any hero content can reach the bar. */
+  function clearOverHero(scope: PageScope) {
+    const nav = document.getElementById("navbar");
+    const hero = document.querySelector<HTMLElement>("[data-parallax-text]");
+    if (!nav?.hasAttribute("data-over-hero") || !hero) return;
+
+    const CLEARANCE = 16;
+    let frame = 0;
+
+    const sync = () => {
+      frame = 0;
+      if (!nav.isConnected) return;
+      const navH = nav.getBoundingClientRect().height;
+      nav.classList.toggle(
+        "is-clear",
+        hero.getBoundingClientRect().top > navH + CLEARANCE
+      );
+    };
+    const schedule = () => {
+      if (!frame) frame = requestAnimationFrame(sync);
+    };
+
+    sync();
+    requestAnimationFrame(() => nav.classList.add("nav-fade"));
+
+    addEventListener("scroll", schedule, { passive: true, signal: scope.signal });
+    addEventListener("resize", schedule, { passive: true, signal: scope.signal });
+  }
+</script>

@@ -1,0 +1,41 @@
+{
+  "name": "blueprint",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "layout": "tsx src/scripts/layout-engine.ts",
+    "dev": "astro dev",
+    "check": "astro check",
+    "prebuild": "tsx src/scripts/layout-engine.ts",
+    "build": "astro build",
+    "postbuild": "tsx scripts/subset-fonts.mjs",
+    "subset-fonts": "tsx scripts/subset-fonts.mjs",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^4.x",
+    "@astrojs/react": "^4.x",
+    "@astrojs/rss": "^4.0.19",
+    "@astrojs/sitemap": "^3.7.3",
+    "astro": "^5.x",
+    "astro-expressive-code": "^0.44.1",
+    "mdast-util-to-string": "^4.0.0",
+    "react": "^19.x",
+    "react-dom": "^19.x"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@tailwindcss/vite": "^4.x",
+    "astro-og-canvas": "^0.13.0",
+    "canvaskit-wasm": "^0.41.1",
+    "fontkit": "^2.0.4",
+    "fontverter": "^2.0.0",
+    "harfbuzzjs": "^0.10.3",
+    "tailwindcss": "^4.x",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

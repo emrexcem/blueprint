@@ -1,0 +1,63 @@
+---
+/*  HomePage.astro
+    The homepage composition, shared by every language: `/` renders it
+    as English, `/de/` as German. Nothing here is language-specific —
+    each section reads the language off Astro.url itself — so the two
+    route files stay one line each and cannot drift apart.        */
+
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import Navbar from "../astro/Navbar.astro";
+import Hero from "../astro/Hero.astro";
+import About from "../astro/About.astro";
+import Projects from "../astro/Projects.astro";
+import Experience from "../astro/Experience.astro";
+import Blog from "../astro/Blog.astro";
+import Contact from "../astro/Contact.astro";
+import Footer from "../astro/Footer.astro";
+import Sheet from "../astro/Sheet.astro";
+import SkillTree from "../react/skill-tree/index";
+import { getLang, useTranslations } from "../../i18n";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+---
+
+<BaseLayout>
+  <Navbar />
+
+  <main data-page="home">
+    <Hero />
+    <About />
+
+    {/* The one tinted band on the page. The SkillTree is the showpiece,
+        and a single lifted section reads as emphasis where alternating
+        every section would read as wallpaper. */}
+    <Sheet
+      id="skills"
+      index={2}
+      label={t.skills.label}
+      title={t.skills.title}
+      description={t.skills.description}
+      descriptionNarrow={t.skills.descriptionNarrow}
+      boxed
+      band
+    >
+      <!-- React island, only hydrates when visible -->
+      <div class="reveal">
+        <SkillTree client:visible={{ rootMargin: "600px" }} text={t.tree} />
+      </div>
+    </Sheet>
+
+    <Projects />
+    <Experience />
+    <Blog />
+    <Contact />
+  </main>
+
+  <Footer />
+</BaseLayout>
+
+<!-- Motion layer: homepage only, so other pages ship no scroll engine -->
+<script>
+  import "../../scripts/motion";
+</script>

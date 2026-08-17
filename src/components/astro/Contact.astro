@@ -1,0 +1,89 @@
+---
+/*  Contact.astro
+    Contact plate: one ruled row per channel, read like a spec sheet. */
+
+import Sheet from "./Sheet.astro";
+import { getLang, useTranslations } from "../../i18n";
+import { site } from "../../config";
+
+const lang = getLang(Astro.url);
+const t = useTranslations(lang);
+
+/* Addresses live in config.ts; only the row's label is translatable. */
+const channels = site.channels.map((channel) => ({
+  ...channel,
+  label: t.contact[channel.key],
+}));
+---
+
+{/* The rows run the full width of the sheet rather than stopping at a
+    2xl measure. A ruled row that ends two thirds across reads as an
+    unfinished table; these are a spec list, and a spec list is ruled
+    edge to edge. */}
+<Sheet
+  id="contact"
+  index={6}
+  label={t.contact.label}
+  title={t.contact.title}
+  description={t.contact.description}
+  boxed
+>
+  <ul class="reveal">
+    {channels.map((channel) => (
+      <li>
+        {/* The label sits above the address on a phone: side by side there
+            is not enough room left for the longest address on this list —
+            "example.com/linkedin", 20 characters — to stay on one line, and
+            a broken URL is unreadable. A longer handle than that needs this
+            row re-checked at 360px.
+
+            These rows are the site's conversion path, so none of what marks
+            them as links may be hover-only — a touch device has no hover,
+            and the row used to be the lowest-contrast thing on the page with
+            no affordance at all. The → is drawn at rest and the address sits
+            a step above muted; hover still has somewhere to go, lifting the
+            text to primary, taking the arrow to the accent, and lighting the
+            accent edge. */}
+        <a
+          href={channel.url}
+          target={channel.url.startsWith("mailto:") ? undefined : "_blank"}
+          rel={channel.url.startsWith("mailto:") ? undefined : "noopener noreferrer"}
+          class="accent-edge contact-row group flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-6 py-5 pl-6 border-t border-faint
+                 transition-colors"
+        >
+          <span class="eyebrow sm:w-20 sm:shrink-0 text-text-muted">{channel.label}</span>
+          {/* Address and arrow are one flex child, not two. On a phone the
+              row stacks, and a bare → left as its own flex item lands on a
+              third line as an orphan glyph; paired here it stays on the
+              address's line, pinned to the right edge, in both directions. */}
+          <span class="flex items-baseline gap-4 flex-1 min-w-0">
+            <span class="font-mono text-sm md:text-base flex-1 min-w-0 break-words">{channel.display}</span>
+            <span
+              aria-hidden="true"
+              class="contact-arrow font-mono shrink-0 text-text-muted transition-all duration-300
+                     group-hover:text-accent-primary group-hover:translate-x-1"
+            >→</span>
+          </span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</Sheet>
+
+<style>
+  /* Close the table with a rule under the final row */
+  ul li:last-child a {
+    border-bottom: 1px solid var(--border-faint);
+  }
+
+  /* A step between muted and primary, so the address reads at rest and
+     hover still has a visible destination. Derived from the two theme
+     vars rather than hardcoded, so it swaps with the theme; it defers
+     to a real --text-secondary token the moment one exists. */
+  .contact-row {
+    color: var(--text-secondary, color-mix(in srgb, var(--text-primary) 60%, var(--text-muted)));
+  }
+  .contact-row:hover {
+    color: var(--text-primary);
+  }
+</style>
