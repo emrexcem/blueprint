@@ -1,4 +1,4 @@
-# Blueprint
+# 📐 Blueprint
 
 An Astro 5 portfolio, blog and interactive skill tree, styled as an engineer's
 drafting set.
@@ -29,7 +29,7 @@ Because they mean something, they are used sparingly. A plate is never drawn
 inside a plate, exactly one band on the page is tinted, and the title block's
 empty right-hand cells stay empty.
 
-## The skill tree
+## 🌳 The skill tree
 
 ![The skill tree in motion: skills as monospace pills on ruled rows, with curved ropes running down to six domain markers on a ground line and converging on a node marked Me. A pill is dragged away, its rope stretches and brightens under strain until it snaps and the pill pops, then a physics panel opens with sliders for spring, damping, break threshold and heal rate](docs/media/skilltree.gif)
 
@@ -76,7 +76,7 @@ Pill widths are computed rather than measured: `characters × size × 0.6`, the
 mono's advance ratio. That is why the whole layout solves in Node with no
 browser in the loop.
 
-## Variations
+## 🎨 Variations
 
 Four palettes and four treatment axes ship as token blocks in one stylesheet,
 selected by a `data-*` attribute on `<html>`.
@@ -97,7 +97,18 @@ All 24 accent colours clear WCAG AA against the page, a plate and the tinted
 band in their own mode. The measured ratio sits in a comment beside each one,
 and the lowest is 5.62:1.
 
-## Light and dark
+| Palette | Mode | Primary | Secondary | Tertiary |
+|---|---|---|---|---|
+| Blueprint | dark | ![#4FB3D9](https://img.shields.io/badge/-%20-4FB3D9) `#4FB3D9` | ![#7C8FF0](https://img.shields.io/badge/-%20-7C8FF0) `#7C8FF0` | ![#C9A227](https://img.shields.io/badge/-%20-C9A227) `#C9A227` |
+| Blueprint | light | ![#0E6E8C](https://img.shields.io/badge/-%20-0E6E8C) `#0E6E8C` | ![#3B4FB5](https://img.shields.io/badge/-%20-3B4FB5) `#3B4FB5` | ![#7D601C](https://img.shields.io/badge/-%20-7D601C) `#7D601C` |
+| Redline | dark | ![#FF7A66](https://img.shields.io/badge/-%20-FF7A66) `#FF7A66` | ![#E8A33D](https://img.shields.io/badge/-%20-E8A33D) `#E8A33D` | ![#8FB4D9](https://img.shields.io/badge/-%20-8FB4D9) `#8FB4D9` |
+| Redline | light | ![#B3301C](https://img.shields.io/badge/-%20-B3301C) `#B3301C` | ![#7D5410](https://img.shields.io/badge/-%20-7D5410) `#7D5410` | ![#2F5F80](https://img.shields.io/badge/-%20-2F5F80) `#2F5F80` |
+| Verdigris | dark | ![#4FD1A5](https://img.shields.io/badge/-%20-4FD1A5) `#4FD1A5` | ![#A79BC4](https://img.shields.io/badge/-%20-A79BC4) `#A79BC4` | ![#D98A4F](https://img.shields.io/badge/-%20-D98A4F) `#D98A4F` |
+| Verdigris | light | ![#0F6E52](https://img.shields.io/badge/-%20-0F6E52) `#0F6E52` | ![#5B4C87](https://img.shields.io/badge/-%20-5B4C87) `#5B4C87` | ![#8A4A16](https://img.shields.io/badge/-%20-8A4A16) `#8A4A16` |
+| Graphite | dark | ![#9FB6C9](https://img.shields.io/badge/-%20-9FB6C9) `#9FB6C9` | ![#B9AC98](https://img.shields.io/badge/-%20-B9AC98) `#B9AC98` | ![#C98A6A](https://img.shields.io/badge/-%20-C98A6A) `#C98A6A` |
+| Graphite | light | ![#3C596E](https://img.shields.io/badge/-%20-3C596E) `#3C596E` | ![#5C5142](https://img.shields.io/badge/-%20-5C5142) `#5C5142` | ![#8A4A2A](https://img.shields.io/badge/-%20-8A4A2A) `#8A4A2A` |
+
+## 🌓 Light and dark
 
 | Dark | Light |
 |---|---|
@@ -111,7 +122,7 @@ Light mode has its own palette rather than an inversion. The accents are
 separately darkened to clear AA on paper, and the tinted band goes darker than
 the page so it still reads as the table under the sheet.
 
-## Also in the box
+## 📦 Also in the box
 
 - **A blog** with MDX, [Expressive Code](https://expressive-code.com/), reading
   time, tag filtering, RSS, a sitemap, per-post social cards drawn at build time
@@ -124,7 +135,7 @@ the page so it still reads as the table under the sheet.
 
 ![The projects grid: four plates with clipped corners, each with a title, description and tech stack. As the pointer crosses them each card tilts towards it in 3D and lifts on a soft shadow, settling flat again as the pointer leaves](docs/media/thingsibuilt.gif)
 
-## Worth knowing
+## 🔎 Worth knowing
 
 - **No animation library.** The islands use about 1.2 KB gzipped of hand-written
   helpers (an in-view trigger, an entrance, a delayed unmount) plus CSS. GSAP
@@ -143,7 +154,7 @@ the page so it still reads as the table under the sheet.
   codepoint in the emitted pages, plus an ASCII and Latin-1 floor. 590 KB of
   source faces ship as 183 KB.
 
-## Quick start
+## 🚀 Quick start
 
 Use this template on GitHub, or:
 
@@ -183,7 +194,7 @@ attach to the wrong entry. `src/i18n/ui.ts` is separate on purpose: that is the
 theme's own chrome (nav labels, section headings, the legend), which you mostly
 leave alone.
 
-## Customising
+## 🛠️ Customising
 
 ### Colour
 
@@ -291,7 +302,7 @@ and every string stays in one file rather than scattered through the markup.
 Adding a third language is the same list in reverse, plus a `src/pages/<code>/`
 directory of one-line route wrappers.
 
-## Deploying
+## 🌐 Deploying
 
 `SITE_URL` is the origin and `BASE_PATH` is the subdirectory. They are separate
 so the base is never written twice.
@@ -309,7 +320,7 @@ SITE_URL=https://your-domain.example npm run build
 
 `dist/` is the whole site. There is no server component.
 
-## Verification
+## ✅ Verification
 
 There is no test runner. `npm run build` does the checking:
 
@@ -322,7 +333,7 @@ Both exit non-zero on failure. `npm run check` runs `astro check` and is
 stricter than the build. CI runs both, plus a build under a subpath so base-path
 handling cannot silently regress.
 
-## Fonts
+## 🔤 Fonts
 
 Self-hosted [Geist and Geist Mono](https://vercel.com/font), both
 [SIL OFL 1.1](public/fonts/geist/OFL.txt). No web-font CDN.
@@ -335,7 +346,7 @@ JetBrains Mono and IBM Plex Mono are also exactly 0.6. Watch Roboto Mono, where
 1229/2048 = 0.600098, which reads as 0.6 and is not. See
 [`public/fonts/README.md`](public/fonts/README.md).
 
-## Licence
+## 📄 Licence
 
 [MIT](LICENSE) for the code; the fonts carry their own licence, above. The demo
 content (the persona, the projects and the two posts) is placeholder material
