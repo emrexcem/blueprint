@@ -61,7 +61,7 @@ jobs:
 
       # Downloaded and committed by hand. Images that land in the tree
       # because a workflow put them there are images nobody looked at.
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: readme-stills
           path: docs/media
