@@ -14,11 +14,11 @@
     "preview": "astro preview"
   },
   "dependencies": {
-    "@astrojs/mdx": "^4.x",
-    "@astrojs/react": "^4.x",
+    "@astrojs/mdx": "^7.x",
+    "@astrojs/react": "^6.x",
     "@astrojs/rss": "^4.0.19",
     "@astrojs/sitemap": "^3.7.3",
-    "astro": "^5.x",
+    "astro": "^7.x",
     "astro-expressive-code": "^0.44.1",
     "mdast-util-to-string": "^4.0.0",
     "react": "^19.x",
